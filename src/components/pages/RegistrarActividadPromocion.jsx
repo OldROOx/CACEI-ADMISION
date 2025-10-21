@@ -69,7 +69,7 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                     </p>
                 </FormSection>
 
-                {/* Footer de formulario - FIX ESLINT: Uso explícito de los componentes */}
+                {/* Footer de formulario */}
                 <div className="pt-4 border-t mt-4">
                     <p className="text-xs text-red-500 mb-4">
                         Los campos marcados con (*) son obligatorios. Esta información será utilizada para generar reportes de efectividad de promoción.
