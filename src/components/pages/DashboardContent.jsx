@@ -51,7 +51,7 @@ const DashboardContent = () => {
     // --- ACCIONES DE PROMOCIÓN ACTUALIZADAS ---
     // Ahora los botones abrirán un modal con el formulario correspondiente.
     const mockPromocionActions = [
-        { label: "Registrar Nuevo Docente", type: 'primary', onClick: () => console.log('Docente'), Icon: ICONS.USER },
+        { label: "Registrar Nuevo Tutor", type: 'primary', onClick: () => console.log('Docente'), Icon: ICONS.USER },
         { label: "Registrar Preparatoria", type: 'secondary', onClick: () => console.log('Prep'), Icon: ICONS.HOME },
         {
             label: "Nueva Actividad de Promoción",

@@ -9,13 +9,18 @@ const summaryData = [
 ];
 
 const Reportes = () => {
+    // --- NUEVO: Obtener el año actual ---
+    const currentYear = new Date().getFullYear();
+
     return (
         <div className="space-y-6">
-            {/* Header */}
+            {/* Header --- MODIFICADO --- */}
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Reportes y Estadísticas</h1>
-                    <p className="text-gray-500 mt-1">Análisis de efectividad de promoción e inducción educativa</p>
+                    <p className="text-gray-500 mt-1">
+                        Análisis de efectividad de promoción e inducción educativa - {currentYear}
+                    </p>
                 </div>
                 <div className="flex space-x-2">
                     <button className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
@@ -29,7 +34,7 @@ const Reportes = () => {
                 </div>
             </div>
 
-            {/* Charts Grid */}
+            {/* Charts Grid (sin cambios) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
                     <h3 className="font-semibold text-gray-800">Efectividad por Preparatoria</h3>
@@ -45,7 +50,7 @@ const Reportes = () => {
                 </div>
             </div>
 
-            {/* Monthly Summary */}
+            {/* Monthly Summary (sin cambios) */}
             <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
                 <h3 className="font-semibold text-gray-800">Resumen Mensual</h3>
                 <p className="text-sm text-gray-500 mb-4">Actividades realizadas este mes</p>

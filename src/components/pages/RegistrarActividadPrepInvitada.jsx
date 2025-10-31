@@ -20,6 +20,8 @@ const RegistrarActividadPrepInvitada = ({ PrimaryButtonComponent, SecondaryButto
 
             <form onSubmit={handleSubmit}>
 
+                {/* ... (Secciones 1-3 sin cambios) ... */}
+
                 {/* 1. SECCIÓN: INFORMACIÓN DE LA ACTIVIDAD */}
                 <FormSection title="Información de la Actividad" icon="📋" subtitle="Complete todos los campos requeridos para registrar la actividad">
                     <div className="grid grid-cols-2 gap-6">
@@ -46,17 +48,21 @@ const RegistrarActividadPrepInvitada = ({ PrimaryButtonComponent, SecondaryButto
                     <FormField label="" placeholder="Escriba aquí sus observaciones..." type="textarea" />
                 </FormSection>
 
-                {/* 4. EVIDENCIAS (Opcional - File Input) */}
-                <FormSection title="Evidencias (Opcional)" subtitle="Suba fotografías, listas de asistencia, o documentos relacionados con la actividad">
-                    <p className="text-sm text-gray-500">
-                        <span className="font-semibold text-gray-800">Seleccionar archivo</span> Ningún archivo seleccionado
-                    </p>
-                    <button type="button" className="text-blue-600 border border-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 text-sm flex-shrink-0">
-                        <span className="mr-1">☁️</span> Subir Material Utilizado
-                    </button>
+                {/* 4. EVIDENCIAS (Opcional - File Input) --- MODIFICADA --- */}
+                <FormSection title="Evidencias (Opcional)" subtitle="Suba fotografías, listas de asistencia, o documentos relacionados con la actividad (PDF, Excel, JPG, PNG)">
+                    <input
+                        type="file"
+                        className="mt-1 block w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-lg file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-50 file:text-blue-700
+                                    hover:file:bg-blue-100"
+                        accept=".pdf,.xls,.xlsx,image/png,image/jpeg"
+                    />
                 </FormSection>
 
-                {/* Footer de formulario */}
+                {/* Footer de formulario (sin cambios) */}
                 <div className="pt-4 border-t mt-4">
                     <p className="text-xs text-red-500 mb-4">
                         Los campos marcados con (*) son obligatorios. Esta información será utilizada para generar reportes de efectividad de promoción.
