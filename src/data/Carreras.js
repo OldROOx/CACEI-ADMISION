@@ -16,23 +16,16 @@ export const CARRERAS_OFERTADAS = [
     "Licenciatura en Administración"
 ];
 
+// Opciones adicionales para otros formularios
 export const TIPOS_PREPARATORIA = [
     "Bachillerato General",
     "Bachillerato Técnico",
     "Telebachillerato"
 ];
 
-// Opcional: Lista de especialidades para docentes si la necesitas
-export const ESPECIALIDADES_DOCENTES = [
-    "Sistemas Computacionales",
-    "Mecatrónica",
-    "Industrial",
-    "Civil",
-    "Química"
-];
-
 export const DEPARTAMENTOS_DOCENTES = [
     "Ciencias Básicas",
     "Ciencias de la Ingeniería",
-    "Ciencias Económico-Administrativas"
+    "Ciencias Económico-Administrativas",
+    "Posgrado e Investigación"
 ];
