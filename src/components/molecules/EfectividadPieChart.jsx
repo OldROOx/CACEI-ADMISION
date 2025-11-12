@@ -1,17 +1,23 @@
+// src/components/molecules/EfectividadPieChart.jsx
+
 import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const data = [
-    { name: 'Municipio A - Escuela 1', value: 400 },
-    { name: 'Municipio B - Escuela 2', value: 300 },
-    { name: 'Municipio C - Escuela 3', value: 300 },
-    { name: 'Municipio D - Escuela 4', value: 200 },
-    { name: 'Municipio E - Escuela 5', value: 278 },
-];
+// Datos simulados ELIMINADOS
+// La data ahora se recibe como prop
 
 const COLORS = ['#FF8042', '#FFBB28', '#0088FE', '#00C49F', '#20B2AA'];
 
-const EfectividadPieChart = () => {
+const EfectividadPieChart = ({ data }) => { // Aceptamos data como prop
+    // Mensaje de carga si no hay datos
+    if (!data || data.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-full min-h-[300px] text-gray-400">
+                <p>Cargando datos o no hay registros de efectividad.</p>
+            </div>
+        );
+    }
+
     return (
         <ResponsiveContainer width="100%" height={300}>
             <PieChart>

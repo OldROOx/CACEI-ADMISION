@@ -18,27 +18,13 @@ import QuickActionCard from '../molecules/QuickActionCard';
 import ActivityList from '../molecules/ActivityList';
 
 
-// MOCKS DE DATOS (sin cambios)
+// MOCKS DE DATOS ELIMINADOS
 const ICONS = {
     DOCENTES: '👨‍🏫', PREP: '🏫', ACTIVIDAD: '🎉', ESTUDIANTES: '🧑‍🎓',
     USER: '👤', HOME: '🏡', DOC: '📄', GEAR: '⚙️', CLOCK: '⏱️'
 };
-const mockStats = [
-    { value: "24", label: "Docentes Registrados", trend: "+2 desde el mes pasado", Icon: ICONS.DOCENTES },
-    { value: "18", label: "Preparatorias Visitadas", trend: "+5 este mes", Icon: ICONS.PREP },
-    { value: "42", label: "Actividades de Promoción", trend: "+12 esta semana", Icon: ICONS.ACTIVIDAD },
-    { value: "156", label: "Estudiantes en Inducción", trend: "+23% vs mes anterior", Icon: ICONS.ESTUDIANTES },
-];
-const mockInduccionActions = [
-    { label: "Subir Evidencias", type: 'primary', onClick: () => console.log('Evidencias'), Icon: ICONS.DOC },
-    { label: "Gestionar Nivelación", type: 'secondary', onClick: () => console.log('Nivelacion'), Icon: ICONS.GEAR },
-    { label: "Control de Asistencia", type: 'secondary', onClick: () => console.log('Asistencia'), Icon: ICONS.CLOCK },
-];
-const mockActivity = [
-    { activity: "Nuevo docente registrado", details: "Dr. Juan Pérez", time: "- Hace 4 horas", Icon: ICONS.USER },
-    { activity: "Preparatoria visitada", details: "CBTIS No. 42 - Torreón", time: "- Hace 4 horas", Icon: ICONS.HOME },
-    { activity: "Actividad de promoción registrada", details: "Presentación Ingeniería en Sistemas", time: "- Hace 6 horas", Icon: ICONS.DOC },
-];
+const mockStats = []; // Aquí se cargarán las métricas principales de la API
+const mockActivity = []; // Aquí se carga la actividad reciente del log de la API
 
 
 const DashboardContent = () => {
@@ -48,8 +34,7 @@ const DashboardContent = () => {
     // Función para cerrar el modal
     const handleCloseModal = () => setModalContent(null);
 
-    // --- ACCIONES DE PROMOCIÓN ACTUALIZADAS ---
-    // Ahora los botones abrirán un modal con el formulario correspondiente.
+    // Las acciones rápidas son UI fija (NO son datos simulados, son la estructura de botones)
     const mockPromocionActions = [
         { label: "Registrar Nuevo Tutor", type: 'primary', onClick: () => console.log('Docente'), Icon: ICONS.USER },
         { label: "Registrar Preparatoria", type: 'secondary', onClick: () => console.log('Prep'), Icon: ICONS.HOME },
@@ -59,7 +44,6 @@ const DashboardContent = () => {
             onClick: () => setModalContent('promocion'), // Identificador para el modal
             Icon: ICONS.ACTIVIDAD
         },
-        // Puedes añadir más botones para los otros formularios
         {
             label: "Actividad Prep. Invitada",
             type: 'secondary',
@@ -73,6 +57,13 @@ const DashboardContent = () => {
             Icon: '💻'
         },
     ];
+
+    const mockInduccionActions = [
+        { label: "Subir Evidencias", type: 'primary', onClick: () => console.log('Evidencias'), Icon: ICONS.DOC },
+        { label: "Gestionar Nivelación", type: 'secondary', onClick: () => console.log('Nivelacion'), Icon: ICONS.GEAR },
+        { label: "Control de Asistencia", type: 'secondary', onClick: () => console.log('Asistencia'), Icon: ICONS.CLOCK },
+    ];
+
 
     // Función para renderizar el formulario correcto dentro del modal
     const renderModalContent = () => {
@@ -95,15 +86,19 @@ const DashboardContent = () => {
                 Bienvenido al Sistema de Promoción e Inducción Educativa
             </h2>
 
-            {/* 1. SECCIÓN DE MÉTRICAS (sin cambios) */}
+            {/* 1. SECCIÓN DE MÉTRICAS */}
             <div className="mb-8">
-                <StatsOverview
-                    stats={mockStats}
-                    MetricCardComponent={MetricDisplay}
-                />
+                {mockStats.length === 0 ? (
+                    <p className="text-center text-gray-500">Cargando métricas principales...</p>
+                ) : (
+                    <StatsOverview
+                        stats={mockStats}
+                        MetricCardComponent={MetricDisplay}
+                    />
+                )}
             </div>
 
-            {/* 2. SECCIÓN DE ACCIONES RÁPIDAS (sin cambios, ya usa las acciones actualizadas) */}
+            {/* 2. SECCIÓN DE ACCIONES RÁPIDAS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <QuickActionCard
                     title="Acciones Rápidas - Promoción"
@@ -121,13 +116,16 @@ const DashboardContent = () => {
                 />
             </div>
 
-            {/* 3. SECCIÓN DE ACTIVIDAD RECIENTE (sin cambios) */}
+            {/* 3. SECCIÓN DE ACTIVIDAD RECIENTE */}
             <div className="p-6 bg-white rounded-xl shadow-md">
                 <ActivityList
                     title="Actividad Reciente"
                     activities={mockActivity}
                     ActivityItemComponent={ActivityLogItem}
                 />
+                {mockActivity.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">No hay actividad reciente.</p>
+                )}
             </div>
 
             {/* --- RENDERIZADO DEL MODAL --- */}

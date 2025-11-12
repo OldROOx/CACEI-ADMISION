@@ -2,12 +2,15 @@
 
 import React from 'react';
 import { FormField, FormHeader, FormSection } from '../atoms/FormAtoms';
+import { CARRERAS_OFERTADAS } from '../../data/Carreras'; // Importación
 
 const RegistrarActividadPrepInvitada = ({ PrimaryButtonComponent, SecondaryButtonComponent }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
         console.log("Formulario de Actividad de Preparatoria Invitada enviado.");
+        // TODO: Implementar llamada a la API POST /api/actividades con multipart/form-data
+        // Asegúrate de enviar Tipo: 'Invitada' y PrepID.
     };
 
     return (
@@ -20,13 +23,28 @@ const RegistrarActividadPrepInvitada = ({ PrimaryButtonComponent, SecondaryButto
 
             <form onSubmit={handleSubmit}>
 
-                {/* ... (Secciones 1-3 sin cambios) ... */}
-
                 {/* 1. SECCIÓN: INFORMACIÓN DE LA ACTIVIDAD */}
                 <FormSection title="Información de la Actividad" icon="📋" subtitle="Complete todos los campos requeridos para registrar la actividad">
                     <div className="grid grid-cols-2 gap-6">
-                        <FormField label="Docente Responsable" placeholder="Seleccione el docente" type="select" required={true} />
-                        <FormField label="Preparatoria Invitada" placeholder="Nombre de la preparatoria" type="text" required={true} />
+                        {/* Docente Responsable (Asumimos que las opciones vendrán de la API) */}
+                        <FormField label="Docente Responsable" placeholder="Seleccione el docente" type="select" required={true}>
+                            <option value="">-- Seleccione un docente --</option>
+                            {/* TODO: Mapear docentes de la API GET /api/docentes */}
+                        </FormField>
+
+                        {/* Preparatoria Invitada (Debe ser un select con PrepID de la API) */}
+                        <FormField label="Preparatoria Invitada" placeholder="Seleccione la preparatoria" type="select" required={true}>
+                            <option value="">-- Seleccione una preparatoria --</option>
+                            {/* TODO: Mapear preparatorias de la API GET /api/preparatorias */}
+                        </FormField>
+
+                        {/* PROYECTO/CARRERA PRESENTADA --- USO DE CATÁLOGO --- (Añadido para consistencia) */}
+                        <FormField label="Proyecto/Carrera Presentada" placeholder="Seleccione la carrera principal" type="select" required={true} colSpan="col-span-2">
+                            <option value="">-- Seleccione una carrera --</option>
+                            {CARRERAS_OFERTADAS.map(carrera => (
+                                <option key={carrera} value={carrera}>{carrera}</option>
+                            ))}
+                        </FormField>
 
                         <FormField label="Fecha de la Actividad" placeholder="dd/mm/aaaa" type="date" required={true} />
                         <FormField label="Hora de Inicio" placeholder="--:--" type="time" required={true} />
@@ -38,9 +56,9 @@ const RegistrarActividadPrepInvitada = ({ PrimaryButtonComponent, SecondaryButto
                     </div>
                 </FormSection>
 
-                {/* 2. SECCIÓN: CARRERAS PROMOVIDAS */}
+                {/* 2. SECCIÓN: CARRERAS PROMOVIDAS (Campo TEXT para la columna CarrerasPromovidas) */}
                 <FormSection title="Carreras Promovidas" subtitle="Liste las carreras que se promovieron durante la actividad.">
-                    <FormField label="" placeholder="Liste las carreras que se promovieron durante la actividad." />
+                    <FormField label="" placeholder="Liste las carreras que se promovieron durante la actividad." type="textarea" />
                 </FormSection>
 
                 {/* 3. OBSERVACIONES Y RESULTADOS (Textarea) */}
@@ -48,10 +66,11 @@ const RegistrarActividadPrepInvitada = ({ PrimaryButtonComponent, SecondaryButto
                     <FormField label="" placeholder="Escriba aquí sus observaciones..." type="textarea" />
                 </FormSection>
 
-                {/* 4. EVIDENCIAS (Opcional - File Input) --- MODIFICADA --- */}
+                {/* 4. EVIDENCIAS (File Input) */}
                 <FormSection title="Evidencias (Opcional)" subtitle="Suba fotografías, listas de asistencia, o documentos relacionados con la actividad (PDF, Excel, JPG, PNG)">
                     <input
                         type="file"
+                        name="evidencia"
                         className="mt-1 block w-full text-sm text-gray-500
                                     file:mr-4 file:py-2 file:px-4
                                     file:rounded-lg file:border-0
@@ -62,7 +81,7 @@ const RegistrarActividadPrepInvitada = ({ PrimaryButtonComponent, SecondaryButto
                     />
                 </FormSection>
 
-                {/* Footer de formulario (sin cambios) */}
+                {/* Footer de formulario */}
                 <div className="pt-4 border-t mt-4">
                     <p className="text-xs text-red-500 mb-4">
                         Los campos marcados con (*) son obligatorios. Esta información será utilizada para generar reportes de efectividad de promoción.

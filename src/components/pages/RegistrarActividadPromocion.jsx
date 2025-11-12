@@ -2,12 +2,14 @@
 
 import React from 'react';
 import { FormField, FormHeader, FormSection } from '../atoms/FormAtoms';
+import { CARRERAS_OFERTADAS } from '../../data/Carreras'; // Importación
 
 const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonComponent }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
         console.log("Formulario de Actividad de Promoción enviado.");
+        // TODO: Implementar llamada a la API POST /api/actividades con multipart/form-data
     };
 
     return (
@@ -20,33 +22,52 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
 
             <form onSubmit={handleSubmit}>
 
-                {/* ... (Secciones 1-4 sin cambios) ... */}
-
                 {/* 1. SECCIÓN: INFORMACIÓN DE LA ACTIVIDAD */}
                 <FormSection title="Información de la Actividad" icon="📋" subtitle="Complete todos los campos requeridos para registrar la actividad">
                     <div className="grid grid-cols-2 gap-6">
-                        <FormField label="Docente Responsable" placeholder="Seleccione el docente" type="select" required={true} />
-                        <FormField label="Preparatoria Visitada" placeholder="Seleccione la preparatoria" type="select" required={true} />
+                        {/* Docente Responsable (Asumimos que las opciones vendrán de la API) */}
+                        <FormField label="Docente Responsable" placeholder="Seleccione el docente" type="select" required={true}>
+                            <option value="">-- Seleccione un docente --</option>
+                            {/* TODO: Mapear docentes de la API GET /api/docentes */}
+                        </FormField>
 
+                        {/* Preparatoria Visitada (Asumimos que las opciones vendrán de la API) */}
+                        <FormField label="Preparatoria Visitada" placeholder="Seleccione la preparatoria" type="select" required={true}>
+                            <option value="">-- Seleccione una preparatoria --</option>
+                            {/* TODO: Mapear preparatorias de la API GET /api/preparatorias */}
+                        </FormField>
+
+                        {/* PROYECTO/CARRERA PRESENTADA --- USO DE CATÁLOGO --- */}
                         <FormField
                             label="Proyecto/Carrera Presentada"
-                            placeholder="Ej: Ingeniería en Sistemas Computacionales"
+                            placeholder="Seleccione la carrera principal"
+                            type="select"
                             required={true}
                             colSpan="col-span-2"
-                        />
+                        >
+                            <option value="">-- Seleccione una carrera --</option>
+                            {CARRERAS_OFERTADAS.map(carrera => (
+                                <option key={carrera} value={carrera}>{carrera}</option>
+                            ))}
+                        </FormField>
 
                         <FormField label="Fecha de la Actividad" placeholder="dd/mm/aaaa" type="date" required={true} />
                         <FormField label="Hora de Inicio" placeholder="--:--" type="time" required={true} />
                         <FormField label="Duración" placeholder="Duración" type="text" required={true} />
 
                         <FormField label="Número de Estudiantes Alcanzados" placeholder="Ej: 45" type="number" required={true} />
-                        <FormField label="Tipo de Actividad" placeholder="Seleccione el tipo" type="select" required={true} />
+                        <FormField label="Tipo de Actividad" placeholder="Seleccione el tipo" type="select" required={true}>
+                            <option value="">-- Seleccione un tipo --</option>
+                            <option>Visitada</option>
+                            <option>Invitada</option>
+                            <option>Digital</option>
+                        </FormField>
                     </div>
                 </FormSection>
 
-                {/* 2. SECCIÓN: CARRERAS PROMOVIDAS */}
+                {/* 2. SECCIÓN: CARRERAS PROMOVIDAS (Campo TEXT para la columna CarrerasPromovidas) */}
                 <FormSection title="Carreras Promovidas" subtitle="Liste las carreras que se promovieron durante la actividad.">
-                    <FormField label="" placeholder="Liste las carreras que se promovieron durante la actividad." />
+                    <FormField label="" placeholder="Liste las carreras que se promovieron durante la actividad." type="textarea" />
                 </FormSection>
 
                 {/* 3. SECCIÓN: MATERIAL UTILIZADO */}
@@ -64,10 +85,12 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                     <FormField label="" placeholder="Escriba aquí sus observaciones..." type="textarea" />
                 </FormSection>
 
-                {/* 5. SECCIÓN: EVIDENCIAS (Opcional - File Input) --- MODIFICADA --- */}
+                {/* 5. SECCIÓN: EVIDENCIAS (File Input) */}
                 <FormSection title="Evidencias (Opcional)" subtitle="Suba fotografías, listas de asistencia, o documentos relacionados con la actividad (PDF, Excel, JPG, PNG)">
                     <input
                         type="file"
+                        // El nombre 'evidencia' es crucial para el middleware Multer en el backend
+                        name="evidencia"
                         className="mt-1 block w-full text-sm text-gray-500
                                     file:mr-4 file:py-2 file:px-4
                                     file:rounded-lg file:border-0
@@ -78,7 +101,7 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                     />
                 </FormSection>
 
-                {/* Footer de formulario (sin cambios) */}
+                {/* Footer de formulario */}
                 <div className="pt-4 border-t mt-4">
                     <p className="text-xs text-red-500 mb-4">
                         Los campos marcados con (*) son obligatorios. Esta información será utilizada para generar reportes de efectividad de promoción.

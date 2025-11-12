@@ -1,11 +1,15 @@
+// src/components/pages/RegistrarPreparatoria.jsx
+
 import React from 'react';
 import { FormField, FormHeader, FormSection } from '../atoms/FormAtoms';
+import { TIPOS_PREPARATORIA } from '../../data/Carreras'; // Importación
 
 const RegistrarPreparatoria = ({ PrimaryButtonComponent, SecondaryButtonComponent }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
         console.log("Formulario de Registrar Preparatoria enviado.");
+        // TODO: Implementar llamada a la API POST /api/preparatorias
     };
 
     return (
@@ -23,11 +27,15 @@ const RegistrarPreparatoria = ({ PrimaryButtonComponent, SecondaryButtonComponen
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField label="Nombre de la Institución" placeholder="Ej: CBTIS No. 45" required={true} />
                         <FormField label="Clave de la Institución" placeholder="Ej: 14DCTO045K" />
+
+                        {/* USO DEL CATÁLOGO TIPOS_PREPARATORIA */}
                         <FormField label="Tipo de Institución" placeholder="Seleccione el tipo de institución" type="select" required={true} colSpan="md:col-span-2">
-                            <option>Bachillerato General</option>
-                            <option>Bachillerato Técnico</option>
-                            <option>Telebachillerato</option>
+                            <option value="">-- Seleccione una opción --</option>
+                            {TIPOS_PREPARATORIA.map(tipo => (
+                                <option key={tipo} value={tipo}>{tipo}</option>
+                            ))}
                         </FormField>
+
                     </div>
                 </FormSection>
 
@@ -37,6 +45,8 @@ const RegistrarPreparatoria = ({ PrimaryButtonComponent, SecondaryButtonComponen
                         <FormField label="Dirección" placeholder="Calle, número, colonia" required={true} colSpan="md:col-span-2" />
                         <FormField label="Ciudad" placeholder="Ciudad" required={true} />
                         <FormField label="Estado" placeholder="Seleccione el estado" type="select" required={true}>
+                            <option value="">-- Seleccione un estado --</option>
+                            {/* TODO: Aquí se pueden agregar más estados o cargar de API si es necesario */}
                             <option>Chiapas</option>
                             <option>Oaxaca</option>
                             <option>Tabasco</option>

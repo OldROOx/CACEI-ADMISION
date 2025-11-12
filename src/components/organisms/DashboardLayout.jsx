@@ -1,11 +1,12 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import SidebarItem from '../atoms/SidebarItem';
-import { useAuth } from '../../context/AuthContext'; // Importar el hook de autenticación
+// Eliminada: import { useAuth } from '../../context/AuthContext';
 
 const DashboardLayout = ({ SidebarItemComponent = SidebarItem }) => {
-    const { userRole, logout } = useAuth(); // Obtener el rol y la función de logout
+    // Eliminada: const { userRole, logout } = useAuth();
 
+    // Todos los elementos de la barra lateral, sin filtrado por rol.
     const allSidebarItems = [
         { name: 'Dashboard', to: '/dashboard', Icon: '🏠', type: 'link' },
         { name: 'Promociones', type: 'groupHeader', Icon: '📖' },
@@ -16,7 +17,7 @@ const DashboardLayout = ({ SidebarItemComponent = SidebarItem }) => {
         { name: 'Registrar Actividad', to: '/registrar-actividad', Icon: '📝', type: 'link' },
         { name: 'Reportes', to: '/reportes', Icon: '📊', type: 'link' },
         { name: 'Registros', to: '/registros', Icon: '📄', type: 'link' },
-        { name: 'Registrar tutor', to: '/registrar-tutor', Icon: '🧑‍🏫', type: 'link', role: 'director' }, // Añadir rol requerido
+        { name: 'Registrar tutor', to: '/registrar-tutor', Icon: '🧑‍🏫', type: 'link' }, // Rol eliminado
         { name: 'Inducción', type: 'groupHeader', Icon: '🧑‍🎓' },
         { name: 'Evidencias', to: '/induccion/evidencias', Icon: '📑', type: 'link' },
         { name: 'Encuestas', to: '/induccion/encuestas', Icon: '📊', type: 'link' },
@@ -24,10 +25,7 @@ const DashboardLayout = ({ SidebarItemComponent = SidebarItem }) => {
         { name: 'Control Asistencia', to: '/induccion/asistencia', Icon: '✅', type: 'link' },
     ];
 
-    // Filtrar los items del menú basados en el rol del usuario
-    const mockSidebarStructure = allSidebarItems.filter(item => {
-        return !item.role || item.role === userRole;
-    });
+    const mockSidebarStructure = allSidebarItems; // Ya no hay filtrado
 
     return (
         <div className="flex h-screen w-screen bg-gray-900 overflow-hidden">
@@ -46,13 +44,11 @@ const DashboardLayout = ({ SidebarItemComponent = SidebarItem }) => {
                         />
                     ))}
                 </div>
+                {/* Eliminada la sección de Cerrar Sesión */}
                 <div className="mt-auto px-4 py-4 border-t border-gray-700">
-                    <SidebarItemComponent
-                        name="Cerrar Sesión"
-                        Icon="⬅️"
-                        isLogout={true}
-                        onClick={logout} // Funcionalidad de logout
-                    />
+                    <div className="flex items-center px-4 py-3 text-sm font-medium text-gray-400">
+                        Acceso Abierto (Sin Autenticación)
+                    </div>
                 </div>
             </nav>
             <main className="flex-1 overflow-y-auto bg-gray-100 p-6">

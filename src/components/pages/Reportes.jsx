@@ -1,20 +1,17 @@
 import React from 'react';
 import EfectividadPieChart from '../molecules/EfectividadPieChart';
+// ASUME que DistribucionBarChart.jsx ha sido creado
+// import DistribucionBarChart from '../molecules/DistribucionBarChart';
 
-const summaryData = [
-    { title: 'Actividades de Promoción', subtitle: 'Presentaciones realizadas', value: 42, color: 'text-blue-600' },
-    { title: 'Clases de Nivelación', subtitle: 'Sesiones completadas', value: 28, color: 'text-purple-600' },
-    { title: 'Evidencias Subidas', subtitle: 'Documentos registrados', value: 156, color: 'text-gray-800' },
-    { title: 'Nuevos Registros', subtitle: 'Docentes y preparatorias', value: 12, color: 'text-green-600' },
-];
+// Datos simulados ELIMINADOS: Usar [] para datos de resumen.
+const summaryData = []; // Aquí se cargarán los datos del resumen mensual
 
 const Reportes = () => {
-    // --- NUEVO: Obtener el año actual ---
     const currentYear = new Date().getFullYear();
 
     return (
         <div className="space-y-6">
-            {/* Header --- MODIFICADO --- */}
+            {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Reportes y Estadísticas</h1>
@@ -34,36 +31,41 @@ const Reportes = () => {
                 </div>
             </div>
 
-            {/* Charts Grid (sin cambios) */}
+            {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
                     <h3 className="font-semibold text-gray-800">Efectividad por Preparatoria</h3>
                     <p className="text-sm text-gray-500 mb-4">Número de estudiantes alcanzados y porcentaje de efectividad</p>
-                    <EfectividadPieChart />
+                    <EfectividadPieChart data={[]} /> {/* Pasa datos vacíos */}
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
                     <h3 className="font-semibold text-gray-800">Distribución por Carrera</h3>
                     <p className="text-sm text-gray-500 mb-4">Interés de estudiantes por programa académico</p>
-                    <div className="flex items-center justify-center h-full text-gray-400">
-                        <p>Próximamente: Gráfico de Barras</p>
+                    <div className="flex items-center justify-center h-full min-h-[300px] text-gray-400">
+                        {/* Cuando se implemente DistribucionBarChart, se usará aquí: <DistribucionBarChart data={[]}/> */}
+                        <p>Gráfico de Barras - Cargando datos...</p>
                     </div>
                 </div>
             </div>
 
-            {/* Monthly Summary (sin cambios) */}
+            {/* Monthly Summary */}
             <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
                 <h3 className="font-semibold text-gray-800">Resumen Mensual</h3>
                 <p className="text-sm text-gray-500 mb-4">Actividades realizadas este mes</p>
                 <div className="space-y-4">
-                    {summaryData.map((item, index) => (
-                        <div key={index} className="flex justify-between items-center border-b pb-3">
-                            <div>
-                                <p className="font-medium text-gray-700">{item.title}</p>
-                                <p className="text-xs text-gray-500">{item.subtitle}</p>
+                    {summaryData.length === 0 ? (
+                        <p className="text-center text-gray-500 py-4">Cargando resumen mensual...</p>
+                    ) : (
+                        summaryData.map((item, index) => (
+                            <div key={index} className="flex justify-between items-center border-b pb-3">
+                                <div>
+                                    <p className="font-medium text-gray-700">{item.title}</p>
+                                    <p className="text-xs text-gray-500">{item.subtitle}</p>
+                                </div>
+                                <p className={`text-2xl font-semibold ${item.color}`}>{item.value}</p>
                             </div>
-                            <p className={`text-2xl font-semibold ${item.color}`}>{item.value}</p>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
             </div>
         </div>

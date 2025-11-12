@@ -1,11 +1,11 @@
 import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
+// Eliminada: import { useAuth } from './context/AuthContext';
 
 // Layout y Páginas
 import DashboardLayout from './components/organisms/DashboardLayout';
 import SidebarItem from './components/atoms/SidebarItem';
-import Login from './components/pages/Login';
+// Eliminada: import Login from './components/pages/Login';
 import DashboardContent from './components/pages/DashboardContent';
 import RegistrarTutor from './components/pages/RegistrarTutor';
 import Encuestas from './components/pages/Encuestas';
@@ -21,39 +21,43 @@ import RegistrarActividadPrepInvitada from './components/pages/RegistrarActivida
 import PrimaryButton from './components/atoms/PrimaryButton';
 import SecondaryButton from './components/atoms/SecondaryButton';
 
-// Componente para proteger rutas
+// Eliminado: Componente para proteger rutas (ProtectedRoute)
+/*
 const ProtectedRoute = () => {
     const { userRole } = useAuth();
     return userRole ? <Outlet /> : <Navigate to="/login" replace />;
 };
+*/
 
 function App() {
     return (
         <Routes>
-            {/* Rutas Públicas */}
-            <Route path="/login" element={<Login />} />
+            {/* La ruta base (/) lleva directamente al DashboardLayout sin protección */}
+            <Route path="/" element={<DashboardLayout SidebarItemComponent={SidebarItem} />}>
+                {/* La ruta de inicio (index) va al Dashboard */}
+                <Route index element={<Navigate to="/dashboard" replace />} />
 
-            {/* Rutas Protegidas */}
-            <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<DashboardLayout SidebarItemComponent={SidebarItem} />}>
-                    <Route index element={<Navigate to="/dashboard" replace />} />
-                    <Route path="dashboard" element={<DashboardContent />} />
-                    <Route path="promociones" element={<RegistrarActividadPromocion PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
-                    <Route path="prep-visitante-promociones" element={<RegistrarActividadPrepInvitada PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
-                    <Route path="promocion-digital" element={<RegistrarActividadPromocionDigital PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
-                    <Route path="registrar-tutor" element={<RegistrarTutor PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
-                    <Route path="registrar-preparatoria" element={<RegistrarPreparatoria PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
-                    <Route path="registrar-actividad" element={<RegistrarActividadPromocion PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
-                    <Route path="registros" element={<RegistrosActividades />} />
-                    <Route path="reportes" element={<Reportes />} />
-                    <Route path="induccion/evidencias" element={<EvidenciasCurso />} />
-                    <Route path="induccion/encuestas" element={<Encuestas />} />
-                    <Route path="induccion/nivelacion" element={<ClasesNivelacion />} />
-                    <Route path="induccion/asistencia" element={<ControlAsistencia />} />
-                    {/* Redirección para cualquier otra ruta no encontrada dentro del dashboard */}
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Route>
+                {/* Todas las páginas ahora son accesibles directamente */}
+                <Route path="dashboard" element={<DashboardContent />} />
+                <Route path="promociones" element={<RegistrarActividadPromocion PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
+                <Route path="prep-visitante-promociones" element={<RegistrarActividadPrepInvitada PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
+                <Route path="promocion-digital" element={<RegistrarActividadPromocionDigital PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
+                <Route path="registrar-tutor" element={<RegistrarTutor PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
+                <Route path="registrar-preparatoria" element={<RegistrarPreparatoria PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
+                <Route path="registrar-actividad" element={<RegistrarActividadPromocion PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />} />
+                <Route path="registros" element={<RegistrosActividades />} />
+                <Route path="reportes" element={<Reportes />} />
+                <Route path="induccion/evidencias" element={<EvidenciasCurso />} />
+                <Route path="induccion/encuestas" element={<Encuestas />} />
+                <Route path="induccion/nivelacion" element={<ClasesNivelacion />} />
+                <Route path="induccion/asistencia" element={<ControlAsistencia />} />
+
+                {/* Redirección para cualquier otra ruta no encontrada */}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
+
+            {/* Eliminada la ruta /login */}
+            {/* Eliminada la ruta /ProtectedRoute */}
         </Routes>
     );
 }
