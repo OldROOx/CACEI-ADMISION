@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { FormField, FormHeader, FormSection } from '../atoms/FormAtoms';
 import { DEPARTAMENTOS_DOCENTES, CARRERAS_OFERTADAS } from '../../data/Carreras'; // Importación de opciones
 
+// Define la URL base para usar el proxy de Vite (resuelve a http://localhost:3000/api)
+const API_BASE_URL = '/api';
+
 const RegistrarTutor = ({ PrimaryButtonComponent, SecondaryButtonComponent }) => {
 
     // Estado inicial de los datos del formulario (alineados con la API)
@@ -42,6 +45,9 @@ const RegistrarTutor = ({ PrimaryButtonComponent, SecondaryButtonComponent }) =>
             AniosExperiencia: 0,
             NotasAdicionales: ''
         });
+        // Limpiar mensajes después de resetear
+        setSuccessMessage('');
+        setErrorMessage('');
     };
 
     const handleSubmit = async (e) => {
@@ -58,26 +64,31 @@ const RegistrarTutor = ({ PrimaryButtonComponent, SecondaryButtonComponent }) =>
         }
 
         try {
-            const response = await fetch('http://localhost:3000/api/docentes', {
+            // CAMBIO CLAVE: Usa la ruta relativa con la constante para que el proxy funcione.
+            const response = await fetch(`${API_BASE_URL}/docentes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                // El cuerpo del formulario se envía como JSON a la API
                 body: JSON.stringify(formData),
             });
 
+            // Parsear la respuesta (incluye mensajes de éxito o error detallados de la API)
             const data = await response.json();
 
             if (!response.ok) {
-                // Manejo de errores específicos de la API (ej: correo duplicado 409)
-                setErrorMessage(data.message || `Error al registrar docente. Código: ${response.status}`);
+                // Manejo de errores (usa el mensaje de la API si está disponible, si no, uno genérico)
+                setErrorMessage(data.message || data.error || `Error al registrar docente. Código: ${response.status}`);
             } else {
+                // Registro exitoso
                 setSuccessMessage(data.message || 'Docente registrado exitosamente.');
                 resetForm();
             }
 
         } catch (error) {
-            setErrorMessage('Error de conexión con el servidor. Asegúrese de que la API esté corriendo.');
+            console.error('Error en la conexión o la petición:', error);
+            setErrorMessage('Error de conexión con el servidor. Asegúrese de que la API esté corriendo y sea accesible.');
         } finally {
             setIsLoading(false);
         }

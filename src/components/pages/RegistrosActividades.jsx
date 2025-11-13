@@ -1,32 +1,84 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FormHeader } from '../atoms/FormAtoms';
 import PrimaryButton from '../atoms/PrimaryButton';
 import SecondaryButton from '../atoms/SecondaryButton';
 import StatCard from '../atoms/StatCard'; // Reutilizamos el StatCard
 
-// MOCK DATA ELIMINADO: Usar [] para datos de lista y [] para stats.
-const mockActividades = []; // Aquí se cargará la lista de actividades desde /api/actividades
-
-// MOCK DATA ELIMINADO:
-const mockStats = []; // Aquí se cargarán las estadísticas del footer
+const API_BASE_URL = '/api'; // Usa el proxy configurado en vite.config.js
 
 const RegistrosActividades = () => {
-    const actividadesData = mockActividades;
-    const statsData = mockStats;
+    // --- ESTADOS PARA LA DATA REAL ---
+    const [actividadesData, setActividadesData] = useState([]);
+    const [loading, setLoading] = useState(true); // Para manejar el estado de carga
+
+    // --- LÓGICA DE CARGA DE DATOS DE LA API ---
+    useEffect(() => {
+        const fetchActividades = async () => {
+            try {
+                setLoading(true);
+                // Petición al endpoint /api/actividades
+                const response = await fetch(`${API_BASE_URL}/actividades`);
+                if (!response.ok) {
+                    throw new Error(`Error al obtener actividades: ${response.status} ${response.statusText}`);
+                }
+                const data = await response.json();
+
+                // Mapear la data para asegurar que tiene un formato amigable para el componente.
+                // Ajusta los nombres de las propiedades (ej: item.nombre, item.estado) si tu API
+                // usa otros nombres de campos para Docente, Preparatoria, etc.
+                const mappedActivities = data.map(item => ({
+                    ...item,
+                    id: item.id || Math.random(), // Asegura una key única
+                    title: item.nombre || item.Titulo || 'Actividad sin título',
+                    Status: item.estado || item.Status || 'Pendiente',
+                    // Adaptación de los campos anidados si la API los devuelve así:
+                    DocenteNombre: item.docente?.nombre || 'Docente',
+                    DocenteApellidos: item.docente?.apellidos || 'Desconocido',
+                    PreparatoriaNombre: item.preparatoria?.nombre || 'Digital/Invitada',
+                    Fecha: new Date(item.fecha).toLocaleDateString() || 'N/A',
+                    EstudiantesAlcanzados: item.estudiantes_alcanzados || item.estudiantes || 0,
+                    Tipo: item.tipo || 'General',
+                    CarrerasPromovidas: item.carreras_promovidas || item.carreras?.join(', ') || 'Varias'
+                }));
+
+                setActividadesData(mappedActivities);
+
+            } catch (error) {
+                console.error('Error cargando actividades:', error);
+                // En caso de error, la lista se queda vacía
+                setActividadesData([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchActividades();
+    }, []);
+
+    // --- LÓGICA DERIVADA DEL ESTADO (Métricas) ---
+    const actividades = actividadesData;
+    const totalRegistros = actividades.length;
 
     const getStatusClasses = (status) => {
-        // El status de la DB es fijo (Completada, Pendiente, Rechazado, etc.)
         if (status === 'Completada') return 'bg-green-100 text-green-800';
         if (status === 'Pendiente') return 'bg-blue-100 text-blue-800';
+        if (status === 'Rechazado' || status === 'Cancelado') return 'bg-red-100 text-red-800';
         return 'bg-gray-100 text-gray-800';
     };
 
-    // Calcular estadísticas resumidas
-    const totalRegistros = actividadesData.length;
-    // Asume que el campo de estado se llama 'Status' y el valor es 'Completada' o 'Pendiente'
-    const completadas = actividadesData.filter(a => a.Status === 'Completada').length;
-    const pendientes = actividadesData.filter(a => a.Status === 'Pendiente').length;
-    const cancelados = actividadesData.filter(a => a.Status === 'Cancelado').length;
+    // Calcular estadísticas resumidas desde la lista de actividades
+    const completadas = actividades.filter(a => a.Status === 'Completada').length;
+    const pendientes = actividades.filter(a => a.Status === 'Pendiente').length;
+    const cancelados = actividades.filter(a => a.Status === 'Cancelado').length;
+
+    // Datos para el componente StatCard
+    const statsDataCalculated = [
+        { value: totalRegistros, label: 'Total Registros', color: 'bg-indigo-500' },
+        { value: completadas, label: 'Actividades Completadas', color: 'bg-green-500' },
+        { value: pendientes, label: 'Actividades Pendientes', color: 'bg-blue-500' },
+        { value: cancelados, label: 'Actividades Canceladas', color: 'bg-red-500' },
+    ];
+
 
     return (
         <div className="space-y-6">
@@ -65,21 +117,22 @@ const RegistrosActividades = () => {
 
             {/* Lista de Actividades */}
             <div className="space-y-4">
-                {actividadesData.length === 0 ? (
+                {loading ? (
+                    <p className="text-center text-gray-500 py-8 bg-white p-4 rounded-xl shadow-md border">Cargando actividades...</p>
+                ) : actividades.length === 0 ? (
                     <p className="text-center text-gray-500 py-8 bg-white p-4 rounded-xl shadow-md border">No hay actividades registradas.</p>
                 ) : (
-                    actividadesData.map((actividad, index) => (
-                        <div key={index} className="bg-white p-4 rounded-xl shadow-md border flex items-center">
+                    actividades.map((actividad) => (
+                        <div key={actividad.id} className="bg-white p-4 rounded-xl shadow-md border flex items-center">
                             <div className="pr-4 text-2xl">📄</div>
                             <div className="flex-grow">
                                 <div className="flex items-center space-x-3">
-                                    {/* Asume que el campo para el título de la actividad se llama 'title' o 'Titulo' */}
-                                    <h3 className="font-semibold text-gray-800">{actividad.title || actividad.Titulo}</h3>
+                                    <h3 className="font-semibold text-gray-800">{actividad.title}</h3>
                                     <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusClasses(actividad.Status)}`}>{actividad.Status}</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-x-6 text-xs text-gray-500 mt-2">
                                     <p>Docente: {actividad.DocenteNombre} {actividad.DocenteApellidos}</p>
-                                    <p>Preparatoria: {actividad.PreparatoriaNombre || 'Digital/Invitada'}</p>
+                                    <p>Preparatoria: {actividad.PreparatoriaNombre}</p>
                                     <p>Fecha: {actividad.Fecha}</p>
                                     <p>Estudiantes: {actividad.EstudiantesAlcanzados}</p>
                                     <p>Tipo: {actividad.Tipo}</p>
@@ -98,10 +151,10 @@ const RegistrosActividades = () => {
 
             {/* Estadísticas del Footer */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
-                {statsData.length === 0 ? (
+                {loading ? (
                     <p className="text-center text-gray-500 col-span-full">Cargando estadísticas del resumen de promoción...</p>
                 ) : (
-                    statsData.map((stat, index) => (
+                    statsDataCalculated.map((stat, index) => (
                         <StatCard key={index} value={stat.value} label={stat.label} colorClassName={stat.color} />
                     ))
                 )}

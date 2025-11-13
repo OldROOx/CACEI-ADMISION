@@ -1,6 +1,6 @@
 // src/components/pages/DashboardContent.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Importar el nuevo Modal y los formularios
 import Modal from '../organisms/Modal';
@@ -18,18 +18,99 @@ import QuickActionCard from '../molecules/QuickActionCard';
 import ActivityList from '../molecules/ActivityList';
 
 
-// MOCKS DE DATOS ELIMINADOS
 const ICONS = {
     DOCENTES: '👨‍🏫', PREP: '🏫', ACTIVIDAD: '🎉', ESTUDIANTES: '🧑‍🎓',
     USER: '👤', HOME: '🏡', DOC: '📄', GEAR: '⚙️', CLOCK: '⏱️'
 };
-const mockStats = []; // Aquí se cargarán las métricas principales de la API
-const mockActivity = []; // Aquí se carga la actividad reciente del log de la API
+
+const API_BASE_URL = '/api'; // Usamos el proxy configurado en vite.config.js
+
+/**
+ * Función utilitaria para obtener el conteo de un endpoint de catálogo.
+ * Asume que el endpoint devuelve una lista o un objeto con un campo 'count' o 'total'.
+ */
+const fetchCount = async (path, label, Icon) => {
+    try {
+        // La URL completa se resuelve gracias al proxy de Vite
+        const response = await fetch(`${API_BASE_URL}${path}`);
+        if (!response.ok) {
+            throw new Error(`Error en la petición: ${response.status} ${response.statusText}`);
+        }
+        const data = await response.json();
+        // Asume que la respuesta es un array (y toma su longitud) o un objeto con una propiedad 'count' o 'total'.
+        const value = Array.isArray(data) ? data.length : (data.count || data.total || 0);
+
+        return {
+            label: label,
+            value: value,
+            // Valores fijos para la tendencia y el icono, para simplificar
+            trend: 'up',
+            Icon: Icon,
+        };
+    } catch (error) {
+        console.error(`Error al obtener ${label}:`, error);
+        return {
+            label: label,
+            value: 'N/A',
+            trend: 'down',
+            Icon: Icon,
+        };
+    }
+};
+
+/**
+ * Función para obtener la actividad reciente.
+ * Asume que el endpoint /actividades devuelve una lista.
+ */
+const fetchActivity = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/actividades`);
+        if (!response.ok) {
+            throw new Error(`Error en la petición de actividades: ${response.statusText}`);
+        }
+        const data = await response.json();
+
+        // Mapea la data al formato que espera ActivityLogItem (se asume una estructura simple para el demo)
+        // Se limita a 5 para mostrar solo la actividad reciente.
+        return data.slice(0, 5).map(item => ({
+            id: item.id || Date.now() + Math.random(),
+            icon: ICONS.ACTIVIDAD,
+            title: `Actividad registrada: ${item.nombre || 'Sin nombre'}`,
+            description: `Tipo: ${item.tipo || 'General'} - Fecha: ${new Date(item.fecha || Date.now()).toLocaleDateString()}`,
+        }));
+    } catch (error) {
+        console.error('Error al obtener actividad reciente:', error);
+        return [];
+    }
+};
 
 
 const DashboardContent = () => {
-    // --- NUEVO ESTADO PARA CONTROLAR EL MODAL ---
+    // --- ESTADO PARA CONTROLAR EL MODAL ---
     const [modalContent, setModalContent] = useState(null);
+
+    // --- ESTADO PARA LA DATA DE LA API (Reemplaza a los mocks) ---
+    const [stats, setStats] = useState([]);
+    const [activity, setActivity] = useState([]);
+
+    // --- EFECTO PARA CARGAR LA DATA DE LA API ---
+    useEffect(() => {
+        const loadData = async () => {
+            const fetchedStats = await Promise.all([
+                // Rutas de catálogo (asumidas desde index.ts: /api/docentes, /api/preparatorias, /api/estudiantes)
+                fetchCount('/docentes', 'Docentes Activos', ICONS.DOCENTES),
+                fetchCount('/preparatorias', 'Preparatorias Registradas', ICONS.PREP),
+                fetchCount('/estudiantes', 'Estudiantes Preinscritos', ICONS.ESTUDIANTES),
+            ]);
+
+            setStats(fetchedStats);
+
+            const fetchedActivity = await fetchActivity();
+            setActivity(fetchedActivity);
+        };
+
+        loadData();
+    }, []);
 
     // Función para cerrar el modal
     const handleCloseModal = () => setModalContent(null);
@@ -88,11 +169,11 @@ const DashboardContent = () => {
 
             {/* 1. SECCIÓN DE MÉTRICAS */}
             <div className="mb-8">
-                {mockStats.length === 0 ? (
+                {stats.length === 0 ? (
                     <p className="text-center text-gray-500">Cargando métricas principales...</p>
                 ) : (
                     <StatsOverview
-                        stats={mockStats}
+                        stats={stats}
                         MetricCardComponent={MetricDisplay}
                     />
                 )}
@@ -120,10 +201,10 @@ const DashboardContent = () => {
             <div className="p-6 bg-white rounded-xl shadow-md">
                 <ActivityList
                     title="Actividad Reciente"
-                    activities={mockActivity}
+                    activities={activity}
                     ActivityItemComponent={ActivityLogItem}
                 />
-                {mockActivity.length === 0 && (
+                {activity.length === 0 && stats.length > 0 && (
                     <p className="text-center text-gray-500 py-4">No hay actividad reciente.</p>
                 )}
             </div>
