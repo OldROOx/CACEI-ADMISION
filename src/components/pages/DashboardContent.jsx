@@ -1,12 +1,20 @@
 // src/components/pages/DashboardContent.jsx
-
 import React, { useState, useEffect } from 'react';
 
 // Importar el nuevo Modal y los formularios
 import Modal from '../organisms/Modal';
+// Formularios de Actividades (ya estaban importados)
 import RegistrarActividadPromocion from './RegistrarActividadPromocion';
 import RegistrarActividadPrepInvitada from './RegistrarActividadPrepInvitada';
 import RegistrarActividadPromocionDigital from './RegistrarActividadPromocionDigital';
+
+// IMPORTACIONES DE FORMULARIOS MODALIZADOS
+import RegistrarTutor from './RegistrarTutor';
+import RegistrarPreparatoria from './RegistrarPreparatoria';
+import SubirEvidencia from './SubirEvidencia'; // FORMULARIO: Lo usaremos en modal
+import TomarAsistencia from './TomarAsistencia'; // FORMULARIO: Lo usaremos en modal
+// Importar ClasesNivelacion para el stub de navegación
+// import ClasesNivelacion from './ClasesNivelacion';
 
 // Importar el resto de componentes necesarios
 import MetricDisplay from '../atoms/MetricDisplay';
@@ -23,27 +31,21 @@ const ICONS = {
     USER: '👤', HOME: '🏡', DOC: '📄', GEAR: '⚙️', CLOCK: '⏱️'
 };
 
-const API_BASE_URL = '/api'; // Usamos el proxy configurado en vite.config.js
+const API_BASE_URL = '/api';
 
-/**
- * Función utilitaria para obtener el conteo de un endpoint de catálogo.
- * Asume que el endpoint devuelve una lista o un objeto con un campo 'count' o 'total'.
- */
+// (Funciones fetchCount y fetchActivity sin cambios)
 const fetchCount = async (path, label, Icon) => {
     try {
-        // La URL completa se resuelve gracias al proxy de Vite
         const response = await fetch(`${API_BASE_URL}${path}`);
         if (!response.ok) {
             throw new Error(`Error en la petición: ${response.status} ${response.statusText}`);
         }
         const data = await response.json();
-        // Asume que la respuesta es un array (y toma su longitud) o un objeto con una propiedad 'count' o 'total'.
         const value = Array.isArray(data) ? data.length : (data.count || data.total || 0);
 
         return {
             label: label,
             value: value,
-            // Valores fijos para la tendencia y el icono, para simplificar
             trend: 'up',
             Icon: Icon,
         };
@@ -58,10 +60,6 @@ const fetchCount = async (path, label, Icon) => {
     }
 };
 
-/**
- * Función para obtener la actividad reciente.
- * Asume que el endpoint /actividades devuelve una lista.
- */
 const fetchActivity = async () => {
     try {
         const response = await fetch(`${API_BASE_URL}/actividades`);
@@ -70,8 +68,6 @@ const fetchActivity = async () => {
         }
         const data = await response.json();
 
-        // Mapea la data al formato que espera ActivityLogItem (se asume una estructura simple para el demo)
-        // Se limita a 5 para mostrar solo la actividad reciente.
         return data.slice(0, 5).map(item => ({
             id: item.id || Date.now() + Math.random(),
             icon: ICONS.ACTIVIDAD,
@@ -97,7 +93,6 @@ const DashboardContent = () => {
     useEffect(() => {
         const loadData = async () => {
             const fetchedStats = await Promise.all([
-                // Rutas de catálogo (asumidas desde index.ts: /api/docentes, /api/preparatorias, /api/estudiantes)
                 fetchCount('/docentes', 'Docentes Activos', ICONS.DOCENTES),
                 fetchCount('/preparatorias', 'Preparatorias Registradas', ICONS.PREP),
                 fetchCount('/estudiantes', 'Estudiantes Preinscritos', ICONS.ESTUDIANTES),
@@ -117,12 +112,22 @@ const DashboardContent = () => {
 
     // Las acciones rápidas son UI fija (NO son datos simulados, son la estructura de botones)
     const mockPromocionActions = [
-        { label: "Registrar Nuevo Tutor", type: 'primary', onClick: () => console.log('Docente'), Icon: ICONS.USER },
-        { label: "Registrar Preparatoria", type: 'secondary', onClick: () => console.log('Prep'), Icon: ICONS.HOME },
+        {
+            label: "Registrar Nuevo Tutor",
+            type: 'primary',
+            onClick: () => setModalContent('registrarTutor'),
+            Icon: ICONS.USER
+        },
+        {
+            label: "Registrar Preparatoria",
+            type: 'secondary',
+            onClick: () => setModalContent('registrarPreparatoria'),
+            Icon: ICONS.HOME
+        },
         {
             label: "Nueva Actividad de Promoción",
             type: 'secondary',
-            onClick: () => setModalContent('promocion'), // Identificador para el modal
+            onClick: () => setModalContent('promocion'),
             Icon: ICONS.ACTIVIDAD
         },
         {
@@ -140,21 +145,60 @@ const DashboardContent = () => {
     ];
 
     const mockInduccionActions = [
-        { label: "Subir Evidencias", type: 'primary', onClick: () => console.log('Evidencias'), Icon: ICONS.DOC },
-        { label: "Gestionar Nivelación", type: 'secondary', onClick: () => console.log('Nivelacion'), Icon: ICONS.GEAR },
-        { label: "Control de Asistencia", type: 'secondary', onClick: () => console.log('Asistencia'), Icon: ICONS.CLOCK },
+        {
+            label: "Subir Evidencias",
+            type: 'primary',
+            // AJUSTE: Abrir modal con formulario Subir Evidencias
+            onClick: () => setModalContent('subirEvidencias'),
+            Icon: ICONS.DOC
+        },
+        {
+            label: "Gestionar Nivelación",
+            type: 'secondary',
+            // AJUSTE: Es una navegación a la página principal de clases
+            onClick: () => console.log('NAVIGATE_TO: /nivelacion'),
+            Icon: ICONS.GEAR
+        },
+        {
+            label: "Control de Asistencia",
+            type: 'secondary',
+            // Abre formulario de asistencia en modal
+            onClick: () => setModalContent('tomarAsistencia'),
+            Icon: ICONS.CLOCK
+        },
     ];
 
 
     // Función para renderizar el formulario correcto dentro del modal
     const renderModalContent = () => {
+        // La prop onSuccess se usa para que los formularios cierren el modal al terminar el POST
+        const buttonProps = {
+            PrimaryButtonComponent: PrimaryButton,
+            SecondaryButtonComponent: SecondaryButton,
+            onSuccess: handleCloseModal
+        };
+
         switch (modalContent) {
+            // Mapeos de Promoción
+            case 'registrarTutor':
+                return <RegistrarTutor {...buttonProps} />;
+            case 'registrarPreparatoria':
+                return <RegistrarPreparatoria {...buttonProps} />;
             case 'promocion':
-                return <RegistrarActividadPromocion PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />;
+                return <RegistrarActividadPromocion {...buttonProps} />;
             case 'prepInvitada':
-                return <RegistrarActividadPrepInvitada PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />;
+                return <RegistrarActividadPrepInvitada {...buttonProps} />;
             case 'promocionDigital':
-                return <RegistrarActividadPromocionDigital PrimaryButtonComponent={PrimaryButton} SecondaryButtonComponent={SecondaryButton} />;
+                return <RegistrarActividadPromocionDigital {...buttonProps} />;
+
+            // Mapeos de Inducción
+            case 'subirEvidencias':
+                // FIX: Ahora Subir Evidencias abre el modal de SubirEvidencia.jsx
+                return <SubirEvidencia {...buttonProps} />;
+            case 'tomarAsistencia':
+                // FIX: El botón de volver está corregido dentro de TomarAsistencia.jsx
+                return <TomarAsistencia {...buttonProps} onSuccess={handleCloseModal} />;
+
             default:
                 return null;
         }
@@ -188,13 +232,7 @@ const DashboardContent = () => {
                     ButtonPrimary={PrimaryButton}
                     ButtonSecondary={SecondaryButton}
                 />
-                <QuickActionCard
-                    title="Acciones Rápidas - Inducción"
-                    subtitle="Administra el proceso de inducción y nivelación"
-                    actions={mockInduccionActions}
-                    ButtonPrimary={PrimaryButton}
-                    ButtonSecondary={SecondaryButton}
-                />
+
             </div>
 
             {/* 3. SECCIÓN DE ACTIVIDAD RECIENTE */}

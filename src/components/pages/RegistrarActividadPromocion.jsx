@@ -1,29 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { FormField, FormHeader, FormSection } from '../atoms/FormAtoms';
-import { CARRERAS_OFERTADAS } from '../../data/Carreras'; // Importación de opciones
+import { CARRERAS_OFERTADAS } from '../../data/Carreras'; // Importación del catálogo local
 
-// Define la URL base para usar el proxy de Vite
-const API_BASE_URL = '/api';
+const API_BASE_URL = '/api'; // Usamos el proxy configurado en vite.config.js
 
-const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonComponent }) => {
+const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonComponent, onSuccess }) => {
 
     // Estado inicial de los datos del formulario (alineados con la API)
     const [formData, setFormData] = useState({
-        NombreActividad: '',
+        // ELIMINADO: NombreActividad
         Tipo: 'Promoción General',
         Fecha: new Date().toISOString().split('T')[0], // Fecha actual en formato YYYY-MM-DD
         DocenteID: '', // ID del Docente seleccionado
-        PreparatoriaID: '', // ID de la Preparatoria seleccionada (null si es digital)
-        EstudiantesAlcanzados: 0,
+        PreparatoriaID: '', // ID de la Preparatoria seleccionada
+        EstudiantesAlcanzados: 1, // VALOR INICIAL DEFENSIVO
         CarrerasPromovidas: [], // Array de carreras seleccionadas
         Observaciones: ''
     });
 
-    // Estados de la interfaz de usuario y datos dinámicos
-    const [docentes, setDocentes] = useState([]); // Ahora cargados de la API
-    const [preparatorias, setPreparatorias] = useState([]); // Ahora cargadas de la API
-    const [isLoading, setIsLoading] = useState(true); // Inicialmente cargando los catálogos
-    const [isSubmitting, setIsSubmitting] = useState(false); // Para el envío del formulario
+    // Estados de datos dinámicos y UI
+    const [docentes, setDocentes] = useState([]);
+    const [preparatorias, setPreparatorias] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
 
@@ -32,18 +31,16 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
         const fetchCatalogs = async () => {
             try {
                 const [docentesRes, preparatoriasRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/docentes`), // Ruta para Docentes
-                    fetch(`${API_BASE_URL}/preparatorias`) // Ruta para Preparatorias
+                    fetch(`${API_BASE_URL}/docentes`), //
+                    fetch(`${API_BASE_URL}/preparatorias`) //
                 ]);
 
                 if (docentesRes.ok) {
-                    const data = await docentesRes.json();
-                    setDocentes(data);
+                    setDocentes(await docentesRes.json());
                 }
 
                 if (preparatoriasRes.ok) {
-                    const data = await preparatoriasRes.json();
-                    setPreparatorias(data);
+                    setPreparatorias(await preparatoriasRes.json());
                 }
 
             } catch (error) {
@@ -67,25 +64,28 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                 ...prev,
                 [name]: values
             }));
-        } else {
-            // Convierte el valor a número si el campo es EstudiantesAlcanzados
-            const finalValue = name === 'EstudiantesAlcanzados' ? parseInt(value, 10) : value;
-
+        } else if (name === 'EstudiantesAlcanzados') {
+            // Se asegura que el valor sea un número (0 si está vacío o es inválido)
+            const numValue = (value === '' || isNaN(parseInt(value, 10))) ? 0 : parseInt(value, 10);
             setFormData(prev => ({
                 ...prev,
-                [name]: finalValue
+                [name]: numValue
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
             }));
         }
     };
 
     const resetForm = () => {
         setFormData({
-            NombreActividad: '',
             Tipo: 'Promoción General',
             Fecha: new Date().toISOString().split('T')[0],
             DocenteID: '',
             PreparatoriaID: '',
-            EstudiantesAlcanzados: 0,
+            EstudiantesAlcanzados: 1, // Reset a 1
             CarrerasPromovidas: [],
             Observaciones: ''
         });
@@ -99,28 +99,46 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
         setSuccessMessage('');
         setErrorMessage('');
 
-        // 1. Validación de campos requeridos
-        if (!formData.NombreActividad || !formData.DocenteID || formData.EstudiantesAlcanzados <= 0 || formData.CarrerasPromovidas.length === 0) {
-            setErrorMessage('Por favor, complete todos los campos obligatorios (*) y asegúrese de que el número de estudiantes sea mayor a 0.');
+        // --- VALIDACIÓN EXPLÍCITA Y GRANULAR (SIN EL CAMPO NOMBRE) ---
+
+        if (formData.DocenteID === '') {
+            setErrorMessage('Debe seleccionar un "Docente Responsable" (*).');
             return;
         }
+
+        if (formData.PreparatoriaID === '') {
+            setErrorMessage('Debe seleccionar una "Preparatoria Visitada" (*).');
+            return;
+        }
+
+        if (formData.CarrerasPromovidas.length === 0) {
+            setErrorMessage('Debe seleccionar al menos una "Carrera Promovida" (*).');
+            return;
+        }
+
+        if (formData.EstudiantesAlcanzados <= 0) {
+            setErrorMessage('El número de estudiantes alcanzados debe ser mayor a 0.');
+            return;
+        }
+        // --- FIN DE LA VALIDACIÓN ---
 
         setIsSubmitting(true);
 
         try {
-            // El API espera una estructura que incluya los IDs y la lista de carreras
+            // Mapeo al formato RESTful de la API (usando los nombres de campos de tu controlador)
             const dataToSend = {
-                nombre: formData.NombreActividad,
-                tipo: formData.Tipo,
-                fecha: formData.Fecha,
-                docenteId: formData.DocenteID,
-                preparatoriaId: formData.PreparatoriaID,
-                estudiantesAlcanzados: formData.EstudiantesAlcanzados,
-                carrerasPromovidas: formData.CarrerasPromovidas,
-                observaciones: formData.Observaciones,
+                // Enviamos un nombre por defecto ya que el campo de texto fue eliminado del formulario
+                NombreActividad: 'Actividad de Promoción Registrada',
+                Tipo: formData.Tipo,
+                Fecha: formData.Fecha,
+                DocenteID: formData.DocenteID,
+                PreparatoriaID: formData.PreparatoriaID,
+                EstudiantesAlcanzados: formData.EstudiantesAlcanzados,
+                CarrerasPromovidas: formData.CarrerasPromovidas.join(','),
+                Observaciones: formData.Observaciones,
             };
 
-            const response = await fetch(`${API_BASE_URL}/actividades`, { // POST a /api/actividades
+            const response = await fetch(`${API_BASE_URL}/actividades`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -131,11 +149,12 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
             const responseData = await response.json();
 
             if (!response.ok) {
-                // Manejo de errores detallados de la API
                 setErrorMessage(responseData.message || responseData.error || `Error al registrar actividad. Código: ${response.status}`);
             } else {
-                setSuccessMessage(responseData.message || `Actividad "${formData.NombreActividad}" registrada exitosamente.`);
+                setSuccessMessage(responseData.message || `Actividad registrada exitosamente.`);
                 resetForm();
+                // Cerrar el modal después de un breve retraso
+                setTimeout(onSuccess, 1500);
             }
 
         } catch (error) {
@@ -146,8 +165,6 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
         }
     };
 
-    // Filtrar preparatorias para excluir la opción de Promoción Digital (si la hubiera, este formulario es para presencial)
-    const filteredPreparatorias = preparatorias.filter(p => p.id !== null);
     const disableForm = isLoading || isSubmitting;
 
 
@@ -170,10 +187,9 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                 <form onSubmit={handleSubmit}>
                     <FormSection title="Detalles de la Actividad" icon="📝" subtitle="Información básica sobre la actividad realizada">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField label="Nombre/Título de la Actividad" name="NombreActividad" placeholder="Ej: Visita al CBTIS 145" required={true} value={formData.NombreActividad} onChange={handleChange} disabled={disableForm} />
+                            {/* CAMPO DE NOMBRE/TÍTULO ELIMINADO */}
 
                             <FormField label="Tipo de Actividad" name="Tipo" type="select" required={true} value={formData.Tipo} onChange={handleChange} disabled={true}>
-                                {/* Valor fijo para este formulario específico */}
                                 <option value="Promoción General">Promoción General (Presencial)</option>
                             </FormField>
 
@@ -193,12 +209,12 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                             {/* Selector de Preparatorias (PreparatoriaID) */}
                             <FormField label="Preparatoria Visitada" name="PreparatoriaID" type="select" required={true} value={formData.PreparatoriaID} onChange={handleChange} disabled={disableForm}>
                                 <option value="">-- Seleccione una preparatoria (*) --</option>
-                                {filteredPreparatorias.map(prep => (
+                                {preparatorias.map(prep => (
                                     <option key={prep.id} value={prep.id}>
                                         {prep.Nombre} ({prep.CCT || 'N/A'})
                                     </option>
                                 ))}
-                                {filteredPreparatorias.length === 0 && <option value="" disabled>No hay preparatorias registradas</option>}
+                                {preparatorias.length === 0 && <option value="" disabled>No hay preparatorias registradas</option>}
                             </FormField>
 
                             <FormField label="Estudiantes Alcanzados" name="EstudiantesAlcanzados" placeholder="Número de estudiantes en la sesión" type="number" required={true} value={formData.EstudiantesAlcanzados} onChange={handleChange} disabled={disableForm} min="1" />
@@ -222,8 +238,13 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                             Los campos marcados con (*) son obligatorios.
                         </p>
                         <div className="flex justify-end space-x-3">
-                            <SecondaryButtonComponent type="button" onClick={resetForm} disabled={disableForm || isSubmitting}>
+                            {/* Botón "Limpiar" */}
+                            <SecondaryButtonComponent type="button" onClick={resetForm} disabled={disableForm}>
                                 Limpiar
+                            </SecondaryButtonComponent>
+                            {/* Botón "Cerrar" (llama a onSuccess) */}
+                            <SecondaryButtonComponent type="button" onClick={onSuccess} disabled={disableForm}>
+                                Cerrar
                             </SecondaryButtonComponent>
                             <PrimaryButtonComponent type="submit" disabled={disableForm || isSubmitting}>
                                 {isSubmitting ? 'Guardando Actividad...' : 'Registrar Actividad'}
