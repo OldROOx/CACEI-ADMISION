@@ -3,7 +3,7 @@ import React from 'react';
 const Encuestas = () => {
     // IMPORTANTE: Reemplaza esta URL con el enlace "Embed HTML" de tu propio Google Form.
     // Asegúrate de que la URL termine en `?embedded=true` para una mejor integración.
-    const googleFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSe2_S_4_z_2b-c-d_e-f_g_h-i-j_k-l_m-n_o-p_q/viewform?embedded=true";
+    const googleFormUrl = "https://docs.google.com/forms/u/0/?tgif=d";
 
     return (
         <div className="space-y-6">
