@@ -1,3 +1,5 @@
+// src/components/pages/EvidenciasCurso.jsx
+
 import React, { useState, useEffect } from 'react';
 import { FormHeader } from '../atoms/FormAtoms';
 import PrimaryButton from '../atoms/PrimaryButton';
@@ -80,7 +82,7 @@ const EvidenciasCurso = () => {
                 Estudiante: mapEstudiantes[ev.estudianteId || ev.estudiante] || 'Estudiante no encontrado',
                 FechaSubida: new Date(ev.fechaSubida || Date.now()).toLocaleDateString(),
                 NombreArchivo: ev.nombreArchivo || 'Archivo sin nombre',
-                URL: ev.url || ev.ruta || '#', // URL o ruta del archivo para la descarga
+                URL: ev.url || ev.ruta || '#', // URL o ruta del archivo para la descarga (debe ser el filename)
                 Tipo: ev.mimeType || 'Archivo',
                 Estado: ev.estado || 'Pendiente', // Asume un campo de estado
             }));
@@ -196,7 +198,13 @@ const EvidenciasCurso = () => {
                                         <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusClasses(ev.Estado)}`}>
                                             {ev.Estado}
                                         </span>
-                                        <a href={ev.URL} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100">
+                                        {/* CORRECCIÓN: Se construye la URL de descarga completa apuntando a /api/uploads/filename */}
+                                        <a
+                                            href={`${API_BASE_URL}/uploads/${ev.URL}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
+                                        >
                                             ⬇️ Descargar
                                         </a>
                                     </div>

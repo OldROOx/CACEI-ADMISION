@@ -63,7 +63,7 @@ export const FormField = ({ label, placeholder, type = 'text', required = false,
 export const FormHeader = ({ title, subtitle, showBack = true }) => (
     <header className="mb-8">
         <div className="flex items-center space-x-2 text-gray-500 mb-2">
-            {showBack && <span className="cursor-pointer text-xl">←</span>}
+
             <h1 className="text-2xl font-semibold text-gray-800">{title}</h1>
         </div>
         <p className="text-sm text-gray-500">{subtitle}</p>

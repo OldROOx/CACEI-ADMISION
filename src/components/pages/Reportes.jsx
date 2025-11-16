@@ -52,7 +52,7 @@ const Reportes = () => {
                 const totalEstudiantes = estudiantes.length;
                 const totalPreparatorias = preparatorias.length;
 
-                // CORRECCIÓN: Calcular total de estudiantes alcanzados usando parseInt
+                // Cálculo: Suma de estudiantes alcanzados para promoción
                 const totalEstudiantesAlcanzados = actividades.reduce((sum, act) => {
                     const alcanzados = parseInt(act.EstudiantesAlcanzados, 10) || 0;
                     return sum + alcanzados;
@@ -62,7 +62,8 @@ const Reportes = () => {
                     { value: totalActividades, label: 'Actividades Realizadas', color: 'bg-indigo-500' },
                     { value: totalDocentes, label: 'Docentes Activos', color: 'bg-blue-500' },
                     { value: totalPreparatorias, label: 'Preparatorias Registradas', color: 'bg-teal-500' },
-                    { value: totalEstudiantesAlcanzados, label: 'Estudiantes Alcanzados', color: 'bg-pink-500' },
+                    // CORRECCIÓN APLICADA: Usamos el conteo real de estudiantes y un label claro.
+                    { value: totalEstudiantes, label: 'Estudiantes Registrados', color: 'bg-pink-500' },
                 ]);
 
                 // 3. Mapeo para Gráfico de Barras: Distribución de Actividades por Tipo
