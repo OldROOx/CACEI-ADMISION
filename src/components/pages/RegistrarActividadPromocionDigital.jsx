@@ -1,41 +1,32 @@
-// src/components/pages/RegistrarActividadPromocionDigital.jsx
-
 import React, { useState, useEffect } from 'react';
 import { FormField, FormHeader, FormSection } from '../atoms/FormAtoms';
-import { CARRERAS_OFERTADAS } from '../../data/Carreras'; // Importación
+import { CARRERAS_OFERTADAS } from '../../data/Carreras';
 
 const API_BASE_URL = '/api';
 
-const RegistrarActividadPromocionDigital = ({ PrimaryButtonComponent, SecondaryButtonComponent }) => {
+const RegistrarActividadPromocionDigital = ({ PrimaryButtonComponent, SecondaryButtonComponent, onSuccess }) => {
 
-    // --- ESTADO PARA LA DATA REAL Y CATÁLOGOS ---
-    const [docentes, setDocentes] = useState([]);
-    const [isLoading, setIsLoading] = useState(true); // Carga inicial de catálogos
-    const [isSubmitting, setIsSubmitting] = useState(false); // Envío del formulario
-
-    // Estado para datos del formulario
     const [formData, setFormData] = useState({
         NombreActividad: '',
         Fecha: new Date().toISOString().split('T')[0],
-        DocenteID: '', // ID del Docente seleccionado
+        DocenteID: '',
         Plataforma: '',
-        URL: '', // Enlace de la evidencia digital
+        URL: '',
         EstudiantesAlcanzados: '',
-        CarrerasPromovidas: [], // Array de carreras seleccionadas
+        CarrerasPromovidas: [],
         Observaciones: ''
     });
-    const [evidenciaFile, setEvidenciaFile] = useState(null); // Para el input de archivo
 
-    // Estados de mensaje
+    const [evidenciaFiles, setEvidenciaFiles] = useState([]);
+    const [docentes, setDocentes] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
 
-
-    // --- LÓGICA DE CARGA DE CATÁLOGOS AL MONTAR EL COMPONENTE ---
     useEffect(() => {
         const fetchCatalogs = async () => {
             try {
-                // Obtener docentes de /api/docentes
                 const docentesRes = await fetch(`${API_BASE_URL}/docentes`);
 
                 if (docentesRes.ok) {
@@ -54,7 +45,6 @@ const RegistrarActividadPromocionDigital = ({ PrimaryButtonComponent, SecondaryB
         fetchCatalogs();
     }, []);
 
-    // --- MANEJADORES DE ESTADO ---
     const handleChange = (e) => {
         const { name, value, type, selectedOptions } = e.target;
 
@@ -65,17 +55,21 @@ const RegistrarActividadPromocionDigital = ({ PrimaryButtonComponent, SecondaryB
                 [name]: values
             }));
         } else {
-            const finalValue = name === 'EstudiantesAlcanzados' ? parseInt(value, 10) : value;
-
             setFormData(prev => ({
                 ...prev,
-                [name]: finalValue
+                [name]: value
             }));
         }
     };
 
     const handleFileChange = (e) => {
-        setEvidenciaFile(e.target.files[0] || null);
+        const files = Array.from(e.target.files || []);
+        if (files.length > 5) {
+            setErrorMessage('Máximo 5 archivos permitidos.');
+            e.target.value = '';
+            return;
+        }
+        setEvidenciaFiles(files);
     };
 
     const resetForm = () => {
@@ -89,57 +83,43 @@ const RegistrarActividadPromocionDigital = ({ PrimaryButtonComponent, SecondaryB
             CarrerasPromovidas: [],
             Observaciones: ''
         });
-        setEvidenciaFile(null);
+        setEvidenciaFiles([]);
+        const fileInput = document.querySelector('input[name="evidencias"]');
+        if (fileInput) fileInput.value = '';
         setSuccessMessage('');
         setErrorMessage('');
-        // Limpiar el input de archivo
-        document.querySelector('input[name="evidencia"]').value = '';
     };
 
-    // --- LÓGICA DE ENVÍO DE DATOS A LA API (Multipart Form Data) ---
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSuccessMessage('');
         setErrorMessage('');
 
-        // 1. Validación de campos requeridos
-        if (!formData.NombreActividad || !formData.DocenteID || !formData.Plataforma || !formData.URL || !formData.Fecha || formData.EstudiantesAlcanzados <= 0 || formData.CarrerasPromovidas.length === 0) {
+        if (!formData.NombreActividad || !formData.DocenteID || !formData.Plataforma || !formData.URL || !formData.Fecha || parseInt(formData.EstudiantesAlcanzados) <= 0 || formData.CarrerasPromovidas.length === 0) {
             setErrorMessage('Por favor, complete todos los campos obligatorios (*) y asegúrese de que el número de estudiantes sea válido.');
             return;
         }
 
         setIsSubmitting(true);
 
-        // Crear FormData para enviar datos y archivo
         const formPayload = new FormData();
 
-        // Fijo para Promoción Digital
-        formPayload.append('tipo', 'Promoción Digital');
+        formPayload.append('Tipo', 'Digital');
+        formPayload.append('Fecha', formData.Fecha);
+        formPayload.append('DocenteID', formData.DocenteID);
+        formPayload.append('EstudiantesAlcanzados', formData.EstudiantesAlcanzados);
+        formPayload.append('CarrerasPromovidas', formData.CarrerasPromovidas.join(', '));
 
-        // Mapeo de campos del formulario
-        formPayload.append('nombre', formData.NombreActividad);
-        formPayload.append('fecha', formData.Fecha);
-        formPayload.append('docenteId', formData.DocenteID);
-        formPayload.append('plataforma', formData.Plataforma);
-        formPayload.append('url', formData.URL);
-        formPayload.append('estudiantesAlcanzados', formData.EstudiantesAlcanzados);
+        const observacionesCompletas = `Plataforma: ${formData.Plataforma} | URL: ${formData.URL}\n\n${formData.Observaciones}`;
+        formPayload.append('Observaciones', observacionesCompletas);
 
-        // Carreras promovidas (el array debe ser stringificado o unido con un delimitador para FormData)
-        formPayload.append('carrerasPromovidas', formData.CarrerasPromovidas.join(', '));
-        formPayload.append('observaciones', formData.Observaciones);
-
-        // No se envía preparatoriaId, ya que es digital
-
-        // Añadir archivo de evidencia
-        if (evidenciaFile) {
-            formPayload.append('evidencia', evidenciaFile, evidenciaFile.name);
-        }
+        evidenciaFiles.forEach((file) => {
+            formPayload.append('evidencias', file);
+        });
 
         try {
-            // POST a /api/actividades con multipart/form-data
             const response = await fetch(`${API_BASE_URL}/actividades`, {
                 method: 'POST',
-                // No es necesario Content-Type, FormData lo maneja automáticamente
                 body: formPayload,
             });
 
@@ -148,8 +128,12 @@ const RegistrarActividadPromocionDigital = ({ PrimaryButtonComponent, SecondaryB
             if (!response.ok) {
                 setErrorMessage(responseData.message || responseData.error || `Error al registrar actividad digital. Código: ${response.status}`);
             } else {
-                setSuccessMessage(responseData.message || `Actividad digital "${formData.NombreActividad}" registrada exitosamente.`);
+                const archivosMsg = responseData.totalArchivos > 0
+                    ? ` (${responseData.totalArchivos} archivo${responseData.totalArchivos > 1 ? 's' : ''} adjunto${responseData.totalArchivos > 1 ? 's' : ''})`
+                    : '';
+                setSuccessMessage(`${responseData.message}${archivosMsg}`);
                 resetForm();
+                if (onSuccess) setTimeout(onSuccess, 1500);
             }
 
         } catch (error) {
@@ -161,7 +145,6 @@ const RegistrarActividadPromocionDigital = ({ PrimaryButtonComponent, SecondaryB
     };
 
     const disableForm = isLoading || isSubmitting;
-
 
     return (
         <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
@@ -182,66 +165,162 @@ const RegistrarActividadPromocionDigital = ({ PrimaryButtonComponent, SecondaryB
             ) : (
                 <form onSubmit={handleSubmit}>
 
-                    {/* 1. SECCIÓN: INFORMACIÓN DE LA ACTIVIDAD */}
                     <FormSection title="Información de la Actividad" icon="💻" subtitle="Complete los detalles del evento digital">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                            <FormField label="Nombre/Título de la Actividad" name="NombreActividad" placeholder="Ej: Webinar sobre Ingeniería" required={true} value={formData.NombreActividad} onChange={handleChange} disabled={disableForm} colSpan="md:col-span-2" />
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Nombre/Título de la Actividad *
+                                </label>
+                                <input
+                                    type="text"
+                                    name="NombreActividad"
+                                    placeholder="Ej: Webinar sobre Ingeniería"
+                                    value={formData.NombreActividad}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                />
+                            </div>
 
-                            <FormField label="Docente Responsable" name="DocenteID" type="select" required={true} value={formData.DocenteID} onChange={handleChange} disabled={disableForm}>
-                                <option value="">-- Seleccione un docente (*) --</option>
-                                {docentes.map(docente => (
-                                    <option key={docente.id} value={docente.id}>
-                                        {docente.Nombre} {docente.Apellidos}
-                                    </option>
-                                ))}
-                                {docentes.length === 0 && <option value="" disabled>No hay docentes registrados</option>}
-                            </FormField>
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Docente Responsable *
+                                </label>
+                                <select
+                                    name="DocenteID"
+                                    value={formData.DocenteID}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white"
+                                >
+                                    <option value="">-- Seleccione un docente (*) --</option>
+                                    {docentes.map(docente => (
+                                        <option key={docente.DocenteID} value={docente.DocenteID}>
+                                            {docente.Nombre} {docente.Apellidos}
+                                        </option>
+                                    ))}
+                                    {docentes.length === 0 && <option value="" disabled>No hay docentes registrados</option>}
+                                </select>
+                            </div>
 
-                            <FormField label="Plataforma Utilizada" name="Plataforma" placeholder="Ej: Zoom, TikTok, YouTube" required={true} value={formData.Plataforma} onChange={handleChange} disabled={disableForm} />
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Plataforma Utilizada *
+                                </label>
+                                <input
+                                    type="text"
+                                    name="Plataforma"
+                                    placeholder="Ej: Zoom, TikTok, YouTube"
+                                    value={formData.Plataforma}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                />
+                            </div>
 
-                            <FormField label="Fecha de Realización" name="Fecha" type="date" required={true} value={formData.Fecha} onChange={handleChange} disabled={disableForm} />
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Fecha de Realización *
+                                </label>
+                                <input
+                                    type="date"
+                                    name="Fecha"
+                                    value={formData.Fecha}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                />
+                            </div>
 
-                            <FormField label="URL de Evidencia Digital" name="URL" placeholder="Ej: https://link.al.video/o/reporte" required={true} type="url" value={formData.URL} onChange={handleChange} disabled={disableForm} />
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    URL de Evidencia Digital *
+                                </label>
+                                <input
+                                    type="url"
+                                    name="URL"
+                                    placeholder="Ej: https://link.al.video/o/reporte"
+                                    value={formData.URL}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                />
+                            </div>
 
                             <div className="col-span-2">
-                                <FormField label="Número de Estudiantes Alcanzados" name="EstudiantesAlcanzados" placeholder="Ej: 150" type="number" required={true} value={formData.EstudiantesAlcanzados} onChange={handleChange} disabled={disableForm} min="1" />
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Número de Estudiantes Alcanzados *
+                                </label>
+                                <input
+                                    type="number"
+                                    name="EstudiantesAlcanzados"
+                                    placeholder="Ej: 150"
+                                    value={formData.EstudiantesAlcanzados}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    min="1"
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                />
                             </div>
                         </div>
                     </FormSection>
 
-                    {/* 2. SECCIÓN: CARRERAS PROMOVIDAS */}
                     <FormSection title="Carreras Promovidas" icon="🎓" subtitle="Seleccione las carreras que fueron objeto de promoción en el evento.">
-                        {/* Selector Múltiple de Carreras */}
-                        <FormField label="" name="CarrerasPromovidas" type="select-multiple" required={true} value={formData.CarrerasPromovidas} onChange={handleChange} size="4" disabled={disableForm}>
+                        <select
+                            name="CarrerasPromovidas"
+                            multiple
+                            value={formData.CarrerasPromovidas}
+                            onChange={handleChange}
+                            size="4"
+                            disabled={disableForm}
+                            className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white"
+                        >
                             {CARRERAS_OFERTADAS.map(carrera => (
                                 <option key={carrera} value={carrera}>{carrera}</option>
                             ))}
-                        </FormField>
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">Mantén Ctrl/Cmd para seleccionar varias</p>
                     </FormSection>
 
-                    {/* 3. OBSERVACIONES Y EVIDENCIAS */}
                     <FormSection title="Observaciones y Evidencias" icon="📝" subtitle="Información adicional y archivo de soporte (si aplica)">
-                        <FormField label="Observaciones" name="Observaciones" placeholder="Detalles adicionales sobre la dinámica o los resultados..." type="textarea" value={formData.Observaciones} onChange={handleChange} disabled={disableForm} />
+                        <textarea
+                            name="Observaciones"
+                            rows="3"
+                            placeholder="Detalles adicionales sobre la dinámica o los resultados..."
+                            value={formData.Observaciones}
+                            onChange={handleChange}
+                            disabled={disableForm}
+                            className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                        />
 
-                        {/* 4. EVIDENCIAS (File Input) */}
-                        <label className="block text-sm font-medium text-gray-700 mt-4">Archivo de Soporte (Opcional)</label>
+                        <label className="block text-sm font-medium text-gray-700 mt-4">Archivos de Soporte (Opcional)</label>
                         <input
                             type="file"
-                            name="evidencia"
+                            name="evidencias"
+                            multiple
                             onChange={handleFileChange}
                             disabled={disableForm}
+                            accept=".pdf,.xls,.xlsx,.doc,.docx,image/png,image/jpeg,image/jpg,image/gif,image/webp"
                             className="mt-1 block w-full text-sm text-gray-500
                                         file:mr-4 file:py-2 file:px-4
                                         file:rounded-lg file:border-0
                                         file:text-sm file:font-semibold
                                         file:bg-purple-50 file:text-purple-700
                                         hover:file:bg-purple-100"
-                            accept=".pdf,image/png,image/jpeg"
                         />
+                        {evidenciaFiles.length > 0 && (
+                            <div className="mt-2 text-sm text-gray-600">
+                                <p className="font-medium">Archivos seleccionados ({evidenciaFiles.length}/5):</p>
+                                <ul className="list-disc list-inside mt-1">
+                                    {evidenciaFiles.map((file, index) => (
+                                        <li key={index}>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </FormSection>
 
-                    {/* Footer de formulario */}
                     <div className="pt-4 border-t mt-4">
                         <p className="text-xs text-red-500 mb-4">
                             Los campos marcados con (*) son obligatorios.
@@ -250,6 +329,11 @@ const RegistrarActividadPromocionDigital = ({ PrimaryButtonComponent, SecondaryB
                             <SecondaryButtonComponent type="button" onClick={resetForm} disabled={disableForm || isSubmitting}>
                                 Limpiar
                             </SecondaryButtonComponent>
+                            {onSuccess && (
+                                <SecondaryButtonComponent type="button" onClick={onSuccess} disabled={disableForm}>
+                                    Cerrar
+                                </SecondaryButtonComponent>
+                            )}
                             <PrimaryButtonComponent type="submit" disabled={disableForm || isSubmitting}>
                                 {isSubmitting ? 'Guardando Actividad...' : 'Registrar Actividad Digital'}
                             </PrimaryButtonComponent>

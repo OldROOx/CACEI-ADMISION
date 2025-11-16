@@ -4,7 +4,7 @@ import { CARRERAS_OFERTADAS } from '../../data/Carreras';
 
 const API_BASE_URL = '/api';
 
-const RegistrarEstudiante = ({ PrimaryButtonComponent, SecondaryButtonComponent, onSuccess }) => {
+const EditarEstudiante = ({ estudiante, PrimaryButtonComponent, SecondaryButtonComponent, onSuccess }) => {
 
     const [formData, setFormData] = useState({
         Nombre: '',
@@ -44,29 +44,30 @@ const RegistrarEstudiante = ({ PrimaryButtonComponent, SecondaryButtonComponent,
         fetchPreparatorias();
     }, []);
 
+    // Cargar datos del estudiante cuando el componente se monta
+    useEffect(() => {
+        if (estudiante) {
+            setFormData({
+                Nombre: estudiante.Nombre || '',
+                Apellidos: estudiante.Apellidos || '',
+                Matricula: estudiante.Matricula || '',
+                Correo: estudiante.Correo || '',
+                Telefono: estudiante.Telefono || '',
+                PrepID: estudiante.PrepID ? String(estudiante.PrepID) : '',
+                CarreraInteres: estudiante.CarreraInteres || '',
+                Municipio: estudiante.Municipio || '',
+                EsAceptado: estudiante.EsAceptado ? 'true' : 'false',
+                Notas: estudiante.Notas || ''
+            });
+        }
+    }, [estudiante]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
             [name]: value
         }));
-    };
-
-    const resetForm = () => {
-        setFormData({
-            Nombre: '',
-            Apellidos: '',
-            Matricula: '',
-            Correo: '',
-            Telefono: '',
-            PrepID: '',
-            CarreraInteres: '',
-            Municipio: '',
-            EsAceptado: 'false',
-            Notas: ''
-        });
-        setSuccessMessage('');
-        setErrorMessage('');
     };
 
     const handleSubmit = async (e) => {
@@ -96,15 +97,15 @@ const RegistrarEstudiante = ({ PrimaryButtonComponent, SecondaryButtonComponent,
                 Matricula: formData.Matricula || null,
                 Correo: formData.Correo,
                 Telefono: formData.Telefono || null,
-                PrepID: formData.PrepID || null,
+                PrepID: formData.PrepID ? parseInt(formData.PrepID) : null,
                 CarreraInteres: formData.CarreraInteres || null,
                 Municipio: formData.Municipio || null,
                 EsAceptado: formData.EsAceptado === 'true',
                 Notas: formData.Notas || null,
             };
 
-            const response = await fetch(`${API_BASE_URL}/estudiantes`, {
-                method: 'POST',
+            const response = await fetch(`${API_BASE_URL}/estudiantes/${estudiante.EstudianteID}`, {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -114,35 +115,61 @@ const RegistrarEstudiante = ({ PrimaryButtonComponent, SecondaryButtonComponent,
             const responseData = await response.json();
 
             if (!response.ok) {
-                setErrorMessage(responseData.message || responseData.error || `Error al registrar estudiante. Código: ${response.status}`);
+                setErrorMessage(responseData.message || responseData.error || `Error al actualizar estudiante. Código: ${response.status}`);
+                setIsSubmitting(false);
             } else {
-                setSuccessMessage(responseData.message || `Estudiante ${formData.Nombre} registrado exitosamente.`);
-                resetForm();
-                if (onSuccess) {
-                    setTimeout(onSuccess, 1500);
-                }
+                // ✅ Mostrar mensaje de éxito
+                setSuccessMessage(`✓ Estudiante ${formData.Nombre} ${formData.Apellidos} actualizado exitosamente`);
+
+                // ✅ Cerrar el modal después de 1.5 segundos
+                setTimeout(() => {
+                    if (onSuccess) {
+                        onSuccess();
+                    }
+                }, 1500);
             }
 
         } catch (error) {
-            console.error('Error de conexión al registrar estudiante:', error);
+            console.error('Error de conexión al actualizar estudiante:', error);
             setErrorMessage('Error de conexión con el servidor. Asegúrese de que la API esté corriendo.');
-        } finally {
             setIsSubmitting(false);
         }
     };
 
     const disableForm = isLoading || isSubmitting;
 
+    if (!estudiante) {
+        return (
+            <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+                <p className="text-center text-gray-500">No se ha seleccionado ningún estudiante.</p>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
             <FormHeader
-                title="Registrar Estudiante"
-                subtitle="Capture los datos de un estudiante de nuevo ingreso o prospecto"
+                title="Editar Estudiante"
+                subtitle={`Modificar información de: ${estudiante.Nombre} ${estudiante.Apellidos}`}
             />
 
-            {(successMessage || errorMessage) && (
-                <div className={`p-4 mb-4 rounded-lg text-sm ${successMessage ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {successMessage || errorMessage}
+            {/* Notificación de éxito con animación */}
+            {successMessage && (
+                <div className="p-4 mb-4 rounded-lg text-sm bg-green-100 text-green-700 border-l-4 border-green-500 flex items-center animate-pulse">
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-semibold">{successMessage}</span>
+                </div>
+            )}
+
+            {/* Notificación de error */}
+            {errorMessage && (
+                <div className="p-4 mb-4 rounded-lg text-sm bg-red-100 text-red-700 border-l-4 border-red-500 flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-semibold">{errorMessage}</span>
                 </div>
             )}
 
@@ -320,16 +347,30 @@ const RegistrarEstudiante = ({ PrimaryButtonComponent, SecondaryButtonComponent,
                             Los campos marcados con (*) son obligatorios.
                         </p>
                         <div className="flex justify-end space-x-3">
-                            <SecondaryButtonComponent type="button" onClick={resetForm} disabled={disableForm}>
-                                Limpiar
-                            </SecondaryButtonComponent>
                             {onSuccess && (
-                                <SecondaryButtonComponent type="button" onClick={onSuccess} disabled={disableForm}>
-                                    Cerrar
+                                <SecondaryButtonComponent
+                                    type="button"
+                                    onClick={onSuccess}
+                                    disabled={disableForm}
+                                >
+                                    Cancelar
                                 </SecondaryButtonComponent>
                             )}
-                            <PrimaryButtonComponent type="submit" disabled={disableForm || isSubmitting}>
-                                {isSubmitting ? 'Registrando...' : 'Registrar Estudiante'}
+                            <PrimaryButtonComponent
+                                type="submit"
+                                disabled={disableForm || isSubmitting}
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Guardando cambios...
+                                    </>
+                                ) : (
+                                    '💾 Guardar Cambios'
+                                )}
                             </PrimaryButtonComponent>
                         </div>
                     </div>
@@ -339,4 +380,4 @@ const RegistrarEstudiante = ({ PrimaryButtonComponent, SecondaryButtonComponent,
     );
 };
 
-export default RegistrarEstudiante;
+export default EditarEstudiante;

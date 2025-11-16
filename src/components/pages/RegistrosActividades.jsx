@@ -1,164 +1,403 @@
 import React, { useState, useEffect } from 'react';
 import { FormHeader } from '../atoms/FormAtoms';
-import PrimaryButton from '../atoms/PrimaryButton';
-import SecondaryButton from '../atoms/SecondaryButton';
-import StatCard from '../atoms/StatCard'; // Reutilizamos el StatCard
 
-const API_BASE_URL = '/api'; // Usa el proxy configurado en vite.config.js
+const API_BASE_URL = '/api';
 
 const RegistrosActividades = () => {
-    // --- ESTADOS PARA LA DATA REAL ---
-    const [actividadesData, setActividadesData] = useState([]);
-    const [loading, setLoading] = useState(true); // Para manejar el estado de carga
+    const [actividades, setActividades] = useState([]);
+    const [actividadesFiltradas, setActividadesFiltradas] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [errorMessage, setErrorMessage] = useState('');
 
-    // --- LÓGICA DE CARGA DE DATOS DE LA API ---
+    // Estados para filtros
+    const [filtroTipo, setFiltroTipo] = useState('todos');
+    const [filtroFecha, setFiltroFecha] = useState('');
+    const [filtroDocente, setFiltroDocente] = useState('');
+    const [busqueda, setBusqueda] = useState('');
+
+    // Estados para vista detallada
+    const [actividadSeleccionada, setActividadSeleccionada] = useState(null);
+    const [mostrarDetalle, setMostrarDetalle] = useState(false);
+
     useEffect(() => {
-        const fetchActividades = async () => {
-            try {
-                setLoading(true);
-                // Petición al endpoint /api/actividades
-                const response = await fetch(`${API_BASE_URL}/actividades`);
-                if (!response.ok) {
-                    throw new Error(`Error al obtener actividades: ${response.status} ${response.statusText}`);
-                }
-                const data = await response.json();
-
-                // Mapear la data para asegurar que tiene un formato amigable para el componente.
-                // Ajusta los nombres de las propiedades (ej: item.nombre, item.estado) si tu API
-                // usa otros nombres de campos para Docente, Preparatoria, etc.
-                const mappedActivities = data.map(item => ({
-                    ...item,
-                    id: item.id || Math.random(), // Asegura una key única
-                    title: item.nombre || item.Titulo || 'Actividad sin título',
-                    Status: item.estado || item.Status || 'Pendiente',
-                    // Adaptación de los campos anidados si la API los devuelve así:
-                    DocenteNombre: item.docente?.nombre || 'Docente',
-                    DocenteApellidos: item.docente?.apellidos || 'Desconocido',
-                    PreparatoriaNombre: item.preparatoria?.nombre || 'Digital/Invitada',
-                    Fecha: new Date(item.fecha).toLocaleDateString() || 'N/A',
-                    EstudiantesAlcanzados: item.estudiantes_alcanzados || item.estudiantes || 0,
-                    Tipo: item.tipo || 'General',
-                    CarrerasPromovidas: item.carreras_promovidas || item.carreras?.join(', ') || 'Varias'
-                }));
-
-                setActividadesData(mappedActivities);
-
-            } catch (error) {
-                console.error('Error cargando actividades:', error);
-                // En caso de error, la lista se queda vacía
-                setActividadesData([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchActividades();
     }, []);
 
-    // --- LÓGICA DERIVADA DEL ESTADO (Métricas) ---
-    const actividades = actividadesData;
-    const totalRegistros = actividades.length;
+    useEffect(() => {
+        aplicarFiltros();
+    }, [actividades, filtroTipo, filtroFecha, filtroDocente, busqueda]);
 
-    const getStatusClasses = (status) => {
-        if (status === 'Completada') return 'bg-green-100 text-green-800';
-        if (status === 'Pendiente') return 'bg-blue-100 text-blue-800';
-        if (status === 'Rechazado' || status === 'Cancelado') return 'bg-red-100 text-red-800';
-        return 'bg-gray-100 text-gray-800';
+    const fetchActividades = async () => {
+        setLoading(true);
+        setErrorMessage('');
+        try {
+            const response = await fetch(`${API_BASE_URL}/actividades`);
+            if (!response.ok) throw new Error('Error al cargar actividades');
+
+            const data = await response.json();
+            setActividades(data);
+            setActividadesFiltradas(data);
+        } catch (error) {
+            console.error('Error:', error);
+            setErrorMessage('Error al cargar los registros de actividades.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // Calcular estadísticas resumidas desde la lista de actividades
-    const completadas = actividades.filter(a => a.Status === 'Completada').length;
-    const pendientes = actividades.filter(a => a.Status === 'Pendiente').length;
-    const cancelados = actividades.filter(a => a.Status === 'Cancelado').length;
+    const aplicarFiltros = () => {
+        let resultados = [...actividades];
 
-    // Datos para el componente StatCard
-    const statsDataCalculated = [
-        { value: totalRegistros, label: 'Total Registros', color: 'bg-indigo-500' },
-        { value: completadas, label: 'Actividades Completadas', color: 'bg-green-500' },
-        { value: pendientes, label: 'Actividades Pendientes', color: 'bg-blue-500' },
-        { value: cancelados, label: 'Actividades Canceladas', color: 'bg-red-500' },
-    ];
+        if (filtroTipo !== 'todos') {
+            resultados = resultados.filter(act => act.Tipo === filtroTipo);
+        }
 
+        if (filtroFecha) {
+            resultados = resultados.filter(act => {
+                const fechaActividad = new Date(act.Fecha).toISOString().split('T')[0];
+                return fechaActividad === filtroFecha;
+            });
+        }
+
+        if (filtroDocente) {
+            resultados = resultados.filter(act =>
+                act.DocenteNombre && act.DocenteNombre.toLowerCase().includes(filtroDocente.toLowerCase())
+            );
+        }
+
+        if (busqueda) {
+            resultados = resultados.filter(act => {
+                const textoBusqueda = `${act.Tipo || ''} ${act.DocenteNombre || ''} ${act.PreparatoriaNombre || ''} ${act.CarrerasPromovidas || ''} ${act.Observaciones || ''}`.toLowerCase();
+                return textoBusqueda.includes(busqueda.toLowerCase());
+            });
+        }
+
+        setActividadesFiltradas(resultados);
+    };
+
+    const limpiarFiltros = () => {
+        setFiltroTipo('todos');
+        setFiltroFecha('');
+        setFiltroDocente('');
+        setBusqueda('');
+    };
+
+    const verDetalle = (actividad) => {
+        setActividadSeleccionada(actividad);
+        setMostrarDetalle(true);
+    };
+
+    const cerrarDetalle = () => {
+        setActividadSeleccionada(null);
+        setMostrarDetalle(false);
+    };
+
+    const getTipoBadge = (tipo) => {
+        const badges = {
+            'Visitada': 'bg-blue-100 text-blue-800 border-blue-300',
+            'Invitada': 'bg-purple-100 text-purple-800 border-purple-300',
+            'Digital': 'bg-green-100 text-green-800 border-green-300'
+        };
+        return badges[tipo] || 'bg-gray-100 text-gray-800 border-gray-300';
+    };
+
+    const exportarExcel = () => {
+        alert('Funcionalidad de exportación a Excel en desarrollo');
+    };
 
     return (
         <div className="space-y-6">
-            {/* Cabecera */}
             <div className="flex justify-between items-start">
-                <FormHeader title="Registros de Actividades" subtitle="Consulte y administre todas las actividades de promoción" />
-                <div className="flex space-x-2 flex-shrink-0">
-                    <SecondaryButton Icon={'📤'}>Exportar</SecondaryButton>
-                    <PrimaryButton>+ Nueva Actividad</PrimaryButton>
+                <FormHeader
+                    title="Registros de Actividades de Promoción"
+                    subtitle="Consulta y gestiona todas las actividades realizadas"
+                    showBack={false}
+                />
+                <div className="flex space-x-2">
+                    <button
+                        onClick={exportarExcel}
+                        className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700"
+                    >
+                        <span className="mr-2">📥</span>
+                        Exportar Excel
+                    </button>
+                    <button
+                        onClick={fetchActividades}
+                        className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                        <span className="mr-2">🔄</span>
+                        Actualizar
+                    </button>
                 </div>
             </div>
 
-            {/* Filtros */}
-            <div className="bg-white p-4 rounded-xl shadow-md border flex items-center space-x-4">
-                <div className="relative flex-grow">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
-                    <input type="text" placeholder="Buscar por docente, preparatoria o proyecto..." className="w-full p-2 pl-10 border rounded-lg text-sm" />
+            {errorMessage && (
+                <div className="p-4 mb-4 rounded-lg text-sm bg-red-100 text-red-700 border-l-4 border-red-500">
+                    {errorMessage}
                 </div>
-                <select className="p-2 border rounded-lg bg-white text-sm">
-                    <option>Todos los estados</option>
-                </select>
-                <select className="p-2 border rounded-lg bg-white text-sm">
-                    <option>Todos los tipos</option>
-                </select>
+            )}
+
+            <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">🔍 Filtros de Búsqueda</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="col-span-1 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Búsqueda General
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="Buscar en todos los campos..."
+                            value={busqueda}
+                            onChange={(e) => setBusqueda(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    <div className="col-span-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Tipo de Actividad
+                        </label>
+                        <select
+                            value={filtroTipo}
+                            onChange={(e) => setFiltroTipo(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        >
+                            <option value="todos">Todos los tipos</option>
+                            <option value="Visitada">Visitada</option>
+                            <option value="Invitada">Invitada</option>
+                            <option value="Digital">Digital</option>
+                        </select>
+                    </div>
+
+                    <div className="col-span-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Fecha
+                        </label>
+                        <input
+                            type="date"
+                            value={filtroFecha}
+                            onChange={(e) => setFiltroFecha(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Docente Responsable
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre de docente..."
+                            value={filtroDocente}
+                            onChange={(e) => setFiltroDocente(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2 flex items-end">
+                        <button
+                            onClick={limpiarFiltros}
+                            className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200"
+                        >
+                            ✖ Limpiar Filtros
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-sm text-gray-600">
+                        Mostrando <span className="font-bold text-blue-600">{actividadesFiltradas.length}</span> de <span className="font-bold">{actividades.length}</span> actividades
+                    </p>
+                </div>
             </div>
 
-            {/* Resumen de registros */}
-            <div className="text-sm text-gray-600 flex justify-between items-center px-2">
-                <span>Mostrando {totalRegistros} de {totalRegistros} registros</span>
-                <div>
-                    <span className="mr-4"><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>{completadas} Completadas</span>
-                    <span className="mr-4"><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1"></span>{pendientes} Pendientes</span>
-                    <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span>{cancelados} Cancelados</span>
+            <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">📋 Lista de Actividades</h3>
+
+                <div className="overflow-x-auto">
+                    {loading ? (
+                        <p className="text-center text-gray-500 py-8">Cargando registros...</p>
+                    ) : actividadesFiltradas.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">No se encontraron actividades con los filtros aplicados.</p>
+                    ) : (
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Docente</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preparatoria</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estudiantes</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evidencias</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                            {actividadesFiltradas.map((actividad) => (
+                                <tr key={actividad.ActividadID} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        #{actividad.ActividadID}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {new Date(actividad.Fecha).toLocaleDateString('es-MX', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric'
+                                        })}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getTipoBadge(actividad.Tipo)}`}>
+                                                {actividad.Tipo}
+                                            </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-900">
+                                        {actividad.DocenteNombre || 'N/A'}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                        {actividad.PreparatoriaNombre || 'Digital/N/A'}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                👥 {actividad.EstudiantesAlcanzados}
+                                            </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        {actividad.EvidenciasURL ? (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                📎 {actividad.EvidenciasURL.split(',').length}
+                                            </span>
+                                        ) : (
+                                            <span className="text-gray-400">-</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        <button
+                                            onClick={() => verDetalle(actividad)}
+                                            className="text-blue-600 hover:text-blue-900 font-medium"
+                                        >
+                                            👁️ Ver detalle
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             </div>
 
-            {/* Lista de Actividades */}
-            <div className="space-y-4">
-                {loading ? (
-                    <p className="text-center text-gray-500 py-8 bg-white p-4 rounded-xl shadow-md border">Cargando actividades...</p>
-                ) : actividades.length === 0 ? (
-                    <p className="text-center text-gray-500 py-8 bg-white p-4 rounded-xl shadow-md border">No hay actividades registradas.</p>
-                ) : (
-                    actividades.map((actividad) => (
-                        <div key={actividad.id} className="bg-white p-4 rounded-xl shadow-md border flex items-center">
-                            <div className="pr-4 text-2xl">📄</div>
-                            <div className="flex-grow">
-                                <div className="flex items-center space-x-3">
-                                    <h3 className="font-semibold text-gray-800">{actividad.title}</h3>
-                                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusClasses(actividad.Status)}`}>{actividad.Status}</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-x-6 text-xs text-gray-500 mt-2">
-                                    <p>Docente: {actividad.DocenteNombre} {actividad.DocenteApellidos}</p>
-                                    <p>Preparatoria: {actividad.PreparatoriaNombre}</p>
-                                    <p>Fecha: {actividad.Fecha}</p>
-                                    <p>Estudiantes: {actividad.EstudiantesAlcanzados}</p>
-                                    <p>Tipo: {actividad.Tipo}</p>
-                                    <p className="col-span-2">Carreras: {actividad.CarrerasPromovidas}</p>
+            {mostrarDetalle && actividadSeleccionada && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                            <h2 className="text-2xl font-bold text-gray-800">
+                                📋 Detalle de Actividad #{actividadSeleccionada.ActividadID}
+                            </h2>
+                            <button
+                                onClick={cerrarDetalle}
+                                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-3">Información General</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Tipo de Actividad:</p>
+                                        <span className={`inline-block mt-1 px-3 py-1 text-sm font-medium rounded-full border ${getTipoBadge(actividadSeleccionada.Tipo)}`}>
+                                            {actividadSeleccionada.Tipo}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Fecha:</p>
+                                        <p className="text-sm font-medium text-gray-900 mt-1">
+                                            {new Date(actividadSeleccionada.Fecha).toLocaleDateString('es-MX', {
+                                                weekday: 'long',
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric'
+                                            })}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Docente Responsable:</p>
+                                        <p className="text-sm font-medium text-gray-900 mt-1">
+                                            {actividadSeleccionada.DocenteNombre || 'No especificado'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Estudiantes Alcanzados:</p>
+                                        <p className="text-sm font-medium text-blue-600 mt-1">
+                                            👥 {actividadSeleccionada.EstudiantesAlcanzados} estudiantes
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex space-x-3 text-gray-500">
-                                <button className="hover:text-blue-600">👁️</button>
-                                <button className="hover:text-green-600">✏️</button>
-                                <button className="hover:text-red-600">🗑️</button>
+
+                            {actividadSeleccionada.PreparatoriaNombre && (
+                                <div className="bg-purple-50 p-4 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-2">🏫 Preparatoria</h3>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {actividadSeleccionada.PreparatoriaNombre}
+                                    </p>
+                                </div>
+                            )}
+
+                            {actividadSeleccionada.CarrerasPromovidas && (
+                                <div className="bg-blue-50 p-4 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-2">🎓 Carreras Promovidas</h3>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                        {actividadSeleccionada.CarrerasPromovidas}
+                                    </p>
+                                </div>
+                            )}
+
+                            {actividadSeleccionada.Observaciones && (
+                                <div className="bg-yellow-50 p-4 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-2">📝 Observaciones</h3>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                        {actividadSeleccionada.Observaciones}
+                                    </p>
+                                </div>
+                            )}
+
+                            {actividadSeleccionada.EvidenciasURL && (
+                                <div className="bg-green-50 p-4 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3">📎 Evidencias Adjuntas</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        {actividadSeleccionada.EvidenciasURL.split(',').map((url, index) => (
+                                            <a
+                                                key={index}
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center px-3 py-2 text-sm text-blue-600 hover:text-blue-800 bg-white border border-blue-200 rounded-lg hover:bg-blue-50"
+                                            >
+                                                <span className="mr-2">📄</span>
+                                                Evidencia {index + 1}
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="pt-4 border-t flex justify-end">
+                                <button
+                                    onClick={cerrarDetalle}
+                                    className="px-6 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg hover:bg-gray-700"
+                                >
+                                    Cerrar
+                                </button>
                             </div>
                         </div>
-                    ))
-                )}
-            </div>
-
-            {/* Estadísticas del Footer */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
-                {loading ? (
-                    <p className="text-center text-gray-500 col-span-full">Cargando estadísticas del resumen de promoción...</p>
-                ) : (
-                    statsDataCalculated.map((stat, index) => (
-                        <StatCard key={index} value={stat.value} label={stat.label} colorClassName={stat.color} />
-                    ))
-                )}
-            </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

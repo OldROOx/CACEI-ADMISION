@@ -1,24 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { FormField, FormHeader, FormSection } from '../atoms/FormAtoms';
-import { CARRERAS_OFERTADAS } from '../../data/Carreras'; // Importación del catálogo local
+import { CARRERAS_OFERTADAS } from '../../data/Carreras';
 
-const API_BASE_URL = '/api'; // Usamos el proxy configurado en vite.config.js
+const API_BASE_URL = '/api';
 
 const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonComponent, onSuccess }) => {
 
-    // Estado inicial de los datos del formulario (alineados con la API)
     const [formData, setFormData] = useState({
-        // ELIMINADO: NombreActividad
-        Tipo: 'Promoción General',
-        Fecha: new Date().toISOString().split('T')[0], // Fecha actual en formato YYYY-MM-DD
-        DocenteID: '', // ID del Docente seleccionado
-        PreparatoriaID: '', // ID de la Preparatoria seleccionada
-        EstudiantesAlcanzados: 1, // VALOR INICIAL DEFENSIVO
-        CarrerasPromovidas: [], // Array de carreras seleccionadas
+        Tipo: 'Visitada',
+        Fecha: new Date().toISOString().split('T')[0],
+        DocenteID: '',
+        PreparatoriaID: '',
+        EstudiantesAlcanzados: 1,
+        CarrerasPromovidas: [],
         Observaciones: ''
     });
 
-    // Estados de datos dinámicos y UI
+    const [evidenciaFiles, setEvidenciaFiles] = useState([]);
     const [docentes, setDocentes] = useState([]);
     const [preparatorias, setPreparatorias] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -26,13 +24,12 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
 
-    // --- LÓGICA DE CARGA DE CATÁLOGOS AL MONTAR EL COMPONENTE ---
     useEffect(() => {
         const fetchCatalogs = async () => {
             try {
                 const [docentesRes, preparatoriasRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/docentes`), //
-                    fetch(`${API_BASE_URL}/preparatorias`) //
+                    fetch(`${API_BASE_URL}/docentes`),
+                    fetch(`${API_BASE_URL}/preparatorias`)
                 ]);
 
                 if (docentesRes.ok) {
@@ -54,7 +51,6 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
         fetchCatalogs();
     }, []);
 
-
     const handleChange = (e) => {
         const { name, value, type, selectedOptions } = e.target;
 
@@ -65,7 +61,6 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                 [name]: values
             }));
         } else if (name === 'EstudiantesAlcanzados') {
-            // Se asegura que el valor sea un número (0 si está vacío o es inválido)
             const numValue = (value === '' || isNaN(parseInt(value, 10))) ? 0 : parseInt(value, 10);
             setFormData(prev => ({
                 ...prev,
@@ -79,27 +74,38 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
         }
     };
 
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length > 5) {
+            setErrorMessage('Máximo 5 archivos permitidos.');
+            e.target.value = '';
+            return;
+        }
+        setEvidenciaFiles(files);
+    };
+
     const resetForm = () => {
         setFormData({
-            Tipo: 'Promoción General',
+            Tipo: 'Visitada',
             Fecha: new Date().toISOString().split('T')[0],
             DocenteID: '',
             PreparatoriaID: '',
-            EstudiantesAlcanzados: 1, // Reset a 1
+            EstudiantesAlcanzados: 1,
             CarrerasPromovidas: [],
             Observaciones: ''
         });
+        setEvidenciaFiles([]);
+        // Limpiar input de archivos
+        const fileInput = document.querySelector('input[name="evidencias"]');
+        if (fileInput) fileInput.value = '';
         setSuccessMessage('');
         setErrorMessage('');
     };
 
-    // --- LÓGICA DE ENVÍO DE DATOS A LA API ---
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSuccessMessage('');
         setErrorMessage('');
-
-        // --- VALIDACIÓN EXPLÍCITA Y GRANULAR (SIN EL CAMPO NOMBRE) ---
 
         if (formData.DocenteID === '') {
             setErrorMessage('Debe seleccionar un "Docente Responsable" (*).');
@@ -120,30 +126,29 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
             setErrorMessage('El número de estudiantes alcanzados debe ser mayor a 0.');
             return;
         }
-        // --- FIN DE LA VALIDACIÓN ---
 
         setIsSubmitting(true);
 
         try {
-            // Mapeo al formato RESTful de la API (usando los nombres de campos de tu controlador)
-            const dataToSend = {
-                // Enviamos un nombre por defecto ya que el campo de texto fue eliminado del formulario
-                NombreActividad: 'Actividad de Promoción Registrada',
-                Tipo: formData.Tipo,
-                Fecha: formData.Fecha,
-                DocenteID: formData.DocenteID,
-                PreparatoriaID: formData.PreparatoriaID,
-                EstudiantesAlcanzados: formData.EstudiantesAlcanzados,
-                CarrerasPromovidas: formData.CarrerasPromovidas.join(','),
-                Observaciones: formData.Observaciones,
-            };
+            // ✅ CAMBIO: Usar FormData para enviar archivos
+            const formPayload = new FormData();
+            formPayload.append('Tipo', formData.Tipo);
+            formPayload.append('Fecha', formData.Fecha);
+            formPayload.append('DocenteID', formData.DocenteID);
+            formPayload.append('PreparatoriaID', formData.PreparatoriaID);
+            formPayload.append('EstudiantesAlcanzados', formData.EstudiantesAlcanzados.toString());
+            formPayload.append('CarrerasPromovidas', formData.CarrerasPromovidas.join(','));
+            formPayload.append('Observaciones', formData.Observaciones);
+
+            // Agregar todos los archivos
+            evidenciaFiles.forEach((file) => {
+                formPayload.append('evidencias', file);
+            });
 
             const response = await fetch(`${API_BASE_URL}/actividades`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(dataToSend),
+                // ✅ NO incluir Content-Type, FormData lo maneja automáticamente
+                body: formPayload,
             });
 
             const responseData = await response.json();
@@ -151,9 +156,11 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
             if (!response.ok) {
                 setErrorMessage(responseData.message || responseData.error || `Error al registrar actividad. Código: ${response.status}`);
             } else {
-                setSuccessMessage(responseData.message || `Actividad registrada exitosamente.`);
+                const archivosMsg = responseData.totalArchivos > 0
+                    ? ` (${responseData.totalArchivos} archivo${responseData.totalArchivos > 1 ? 's' : ''} adjunto${responseData.totalArchivos > 1 ? 's' : ''})`
+                    : '';
+                setSuccessMessage(`${responseData.message}${archivosMsg}`);
                 resetForm();
-                // Cerrar el modal después de un breve retraso
                 setTimeout(onSuccess, 1500);
             }
 
@@ -167,11 +174,10 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
 
     const disableForm = isLoading || isSubmitting;
 
-
     return (
         <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
             <FormHeader
-                title="Registrar Actividad de Promoción (General)"
+                title="Registrar Actividad de Promoción (Visita a Preparatoria)"
                 subtitle="Capture los detalles de una visita presencial a preparatoria."
             />
 
@@ -187,50 +193,159 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                 <form onSubmit={handleSubmit}>
                     <FormSection title="Detalles de la Actividad" icon="📝" subtitle="Información básica sobre la actividad realizada">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* CAMPO DE NOMBRE/TÍTULO ELIMINADO */}
 
-                            <FormField label="Tipo de Actividad" name="Tipo" type="select" required={true} value={formData.Tipo} onChange={handleChange} disabled={true}>
-                                <option value="Promoción General">Promoción General (Presencial)</option>
-                            </FormField>
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Tipo de Actividad *
+                                </label>
+                                <select
+                                    name="Tipo"
+                                    value={formData.Tipo}
+                                    onChange={handleChange}
+                                    disabled={true}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white"
+                                >
+                                    <option value="Visitada">Promoción General (Presencial)</option>
+                                </select>
+                            </div>
 
-                            <FormField label="Fecha de Realización" name="Fecha" type="date" required={true} value={formData.Fecha} onChange={handleChange} disabled={disableForm} />
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Fecha de Realización *
+                                </label>
+                                <input
+                                    type="date"
+                                    name="Fecha"
+                                    value={formData.Fecha}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                />
+                            </div>
 
-                            {/* Selector de Docentes (DocenteID) */}
-                            <FormField label="Docente Responsable" name="DocenteID" type="select" required={true} value={formData.DocenteID} onChange={handleChange} disabled={disableForm}>
-                                <option value="">-- Seleccione un docente (*) --</option>
-                                {docentes.map(docente => (
-                                    <option key={docente.id} value={docente.id}>
-                                        {docente.Nombre} {docente.Apellidos} ({docente.Especialidad})
-                                    </option>
-                                ))}
-                                {docentes.length === 0 && <option value="" disabled>No hay docentes registrados</option>}
-                            </FormField>
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Docente Responsable *
+                                </label>
+                                <select
+                                    name="DocenteID"
+                                    value={formData.DocenteID}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white"
+                                >
+                                    <option value="">-- Seleccione un docente (*) --</option>
+                                    {docentes.map(docente => (
+                                        <option key={docente.DocenteID} value={docente.DocenteID}>
+                                            {docente.Nombre} {docente.Apellidos} ({docente.Especialidad})
+                                        </option>
+                                    ))}
+                                    {docentes.length === 0 && <option value="" disabled>No hay docentes registrados</option>}
+                                </select>
+                            </div>
 
-                            {/* Selector de Preparatorias (PreparatoriaID) */}
-                            <FormField label="Preparatoria Visitada" name="PreparatoriaID" type="select" required={true} value={formData.PreparatoriaID} onChange={handleChange} disabled={disableForm}>
-                                <option value="">-- Seleccione una preparatoria (*) --</option>
-                                {preparatorias.map(prep => (
-                                    <option key={prep.id} value={prep.id}>
-                                        {prep.Nombre} ({prep.CCT || 'N/A'})
-                                    </option>
-                                ))}
-                                {preparatorias.length === 0 && <option value="" disabled>No hay preparatorias registradas</option>}
-                            </FormField>
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Preparatoria Visitada *
+                                </label>
+                                <select
+                                    name="PreparatoriaID"
+                                    value={formData.PreparatoriaID}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white"
+                                >
+                                    <option value="">-- Seleccione una preparatoria (*) --</option>
+                                    {preparatorias.map(prep => (
+                                        <option key={prep.PrepID} value={prep.PrepID}>
+                                            {prep.Nombre} ({prep.Clave || 'N/A'})
+                                        </option>
+                                    ))}
+                                    {preparatorias.length === 0 && <option value="" disabled>No hay preparatorias registradas</option>}
+                                </select>
+                            </div>
 
-                            <FormField label="Estudiantes Alcanzados" name="EstudiantesAlcanzados" placeholder="Número de estudiantes en la sesión" type="number" required={true} value={formData.EstudiantesAlcanzados} onChange={handleChange} disabled={disableForm} min="1" />
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Estudiantes Alcanzados *
+                                </label>
+                                <input
+                                    type="number"
+                                    name="EstudiantesAlcanzados"
+                                    placeholder="Número de estudiantes en la sesión"
+                                    value={formData.EstudiantesAlcanzados}
+                                    onChange={handleChange}
+                                    disabled={disableForm}
+                                    min="1"
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                />
+                            </div>
 
                         </div>
                     </FormSection>
 
                     <FormSection title="Detalles de Promoción" icon="🎓" subtitle="Carreras y observaciones del evento">
-                        {/* Selector Múltiple de Carreras */}
-                        <FormField label="Carreras Promovidas" name="CarrerasPromovidas" type="select-multiple" required={true} value={formData.CarrerasPromovidas} onChange={handleChange} size="4" disabled={disableForm}>
-                            {CARRERAS_OFERTADAS.map(carrera => (
-                                <option key={carrera} value={carrera}>{carrera}</option>
-                            ))}
-                        </FormField>
 
-                        <FormField type="textarea" label="Observaciones" name="Observaciones" placeholder="Detalles de la interacción, preguntas frecuentes, etc." value={formData.Observaciones} onChange={handleChange} disabled={disableForm} />
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700">
+                                Carreras Promovidas * (mantén Ctrl/Cmd para seleccionar varias)
+                            </label>
+                            <select
+                                name="CarrerasPromovidas"
+                                multiple
+                                value={formData.CarrerasPromovidas}
+                                onChange={handleChange}
+                                size="4"
+                                disabled={disableForm}
+                                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white"
+                            >
+                                {CARRERAS_OFERTADAS.map(carrera => (
+                                    <option key={carrera} value={carrera}>{carrera}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700">
+                                Observaciones
+                            </label>
+                            <textarea
+                                name="Observaciones"
+                                rows="3"
+                                placeholder="Detalles de la interacción, preguntas frecuentes, etc."
+                                value={formData.Observaciones}
+                                onChange={handleChange}
+                                disabled={disableForm}
+                                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                            />
+                        </div>
+                    </FormSection>
+
+                    <FormSection title="Evidencias (Opcional)" icon="📎" subtitle="Adjunte fotos, documentos o archivos Excel (máximo 5 archivos, 10MB cada uno)">
+                        <input
+                            type="file"
+                            name="evidencias"
+                            multiple
+                            onChange={handleFileChange}
+                            disabled={disableForm}
+                            accept=".pdf,.xls,.xlsx,.doc,.docx,image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                            className="mt-1 block w-full text-sm text-gray-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-lg file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-blue-50 file:text-blue-700
+                                        hover:file:bg-blue-100"
+                        />
+                        {evidenciaFiles.length > 0 && (
+                            <div className="mt-2 text-sm text-gray-600">
+                                <p className="font-medium">Archivos seleccionados ({evidenciaFiles.length}/5):</p>
+                                <ul className="list-disc list-inside mt-1">
+                                    {evidenciaFiles.map((file, index) => (
+                                        <li key={index}>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </FormSection>
 
                     <div className="pt-4 border-t mt-4">
@@ -238,11 +353,9 @@ const RegistrarActividadPromocion = ({ PrimaryButtonComponent, SecondaryButtonCo
                             Los campos marcados con (*) son obligatorios.
                         </p>
                         <div className="flex justify-end space-x-3">
-                            {/* Botón "Limpiar" */}
                             <SecondaryButtonComponent type="button" onClick={resetForm} disabled={disableForm}>
                                 Limpiar
                             </SecondaryButtonComponent>
-                            {/* Botón "Cerrar" (llama a onSuccess) */}
                             <SecondaryButtonComponent type="button" onClick={onSuccess} disabled={disableForm}>
                                 Cerrar
                             </SecondaryButtonComponent>
