@@ -3,6 +3,7 @@ import { FormHeader } from '../atoms/FormAtoms';
 import StatCard from '../atoms/StatCard';
 import DistribucionBarChart from '../molecules/DistribucionBarChart';
 import EfectividadPieChart from '../molecules/EfectividadPieChart';
+import { exportarReporteGeneralPDF } from '../../utils/exportUtils';
 
 const API_BASE_URL = '/api';
 
@@ -51,9 +52,10 @@ const Reportes = () => {
                 const totalEstudiantes = estudiantes.length;
                 const totalPreparatorias = preparatorias.length;
 
-                // Calcular total de estudiantes alcanzados en todas las actividades
+                // CORRECCIÓN: Calcular total de estudiantes alcanzados usando parseInt
                 const totalEstudiantesAlcanzados = actividades.reduce((sum, act) => {
-                    return sum + (parseInt(act.EstudiantesAlcanzados) || 0);
+                    const alcanzados = parseInt(act.EstudiantesAlcanzados, 10) || 0;
+                    return sum + alcanzados;
                 }, 0);
 
                 setStatsData([
@@ -80,14 +82,14 @@ const Reportes = () => {
                 // 4. Mapeo para Gráfico de Pastel: Estudiantes por Municipio
                 const municipioData = estadisticasEst.porMunicipio.map(item => ({
                     name: item.Municipio || 'Sin especificar',
-                    value: parseInt(item.cantidad) || 0
+                    value: parseInt(item.cantidad, 10) || 0
                 }));
                 setMunicipioChartData(municipioData);
 
                 // 5. Mapeo para Gráfico de Pastel: Estudiantes por Preparatoria
                 const preparatoriaData = estadisticasEst.porPreparatoria.map(item => ({
                     name: item.preparatoria || 'Sin especificar',
-                    value: parseInt(item.cantidad) || 0
+                    value: parseInt(item.cantidad, 10) || 0
                 }));
                 setPreparatoriaChartData(preparatoriaData);
 
@@ -106,6 +108,15 @@ const Reportes = () => {
         fetchReportData();
     }, []);
 
+    const exportarReporte = () => {
+        if (statsData.length === 0) {
+            setErrorMessage('No hay datos para exportar.');
+            setTimeout(() => setErrorMessage(''), 3000);
+            return;
+        }
+        exportarReporteGeneralPDF(statsData, activityChartData);
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -115,7 +126,10 @@ const Reportes = () => {
                     subtitle="Visualización de métricas clave de promoción e inducción"
                     showBack={false}
                 />
-                <button className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                <button
+                    onClick={exportarReporte}
+                    className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
                     <span className="mr-2">📤</span>
                     Exportar Reporte
                 </button>
@@ -289,7 +303,7 @@ const ActividadesRecientesTable = () => {
                             {actividad.PreparatoriaNombre || 'Digital/N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                            {actividad.EstudiantesAlcanzados}
+                            {parseInt(actividad.EstudiantesAlcanzados, 10) || 0}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                             {actividad.EvidenciasURL ? (

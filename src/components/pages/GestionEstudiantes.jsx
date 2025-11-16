@@ -6,6 +6,7 @@ import StatCard from '../atoms/StatCard';
 import Modal from '../organisms/Modal';
 import RegistrarEstudiante from './RegistrarEstudiante';
 import EditarEstudiante from './EditarEstudiante';
+import { exportarEstudiantesExcel } from '../../utils/exportUtils';
 
 const API_BASE_URL = '/api';
 
@@ -16,13 +17,11 @@ const GestionEstudiantes = () => {
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
 
-    // Estados para modales
     const [isModalRegistroOpen, setIsModalRegistroOpen] = useState(false);
     const [isModalCargaOpen, setIsModalCargaOpen] = useState(false);
     const [isModalEditarOpen, setIsModalEditarOpen] = useState(false);
     const [estudianteSeleccionado, setEstudianteSeleccionado] = useState(null);
 
-    // Estado para carga masiva
     const [archivoExcel, setArchivoExcel] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -36,7 +35,6 @@ const GestionEstudiantes = () => {
             const data = await response.json();
             setEstudiantes(data);
 
-            // Calcular estadísticas
             const total = data.length;
             const aceptados = data.filter(e => e.EsAceptado).length;
             const municipios = [...new Set(data.map(e => e.Municipio).filter(Boolean))].length;
@@ -142,6 +140,17 @@ const GestionEstudiantes = () => {
         }
     };
 
+    const exportarEstudiantes = () => {
+        if (estudiantes.length === 0) {
+            setErrorMessage('No hay datos para exportar.');
+            setTimeout(() => setErrorMessage(''), 3000);
+            return;
+        }
+        exportarEstudiantesExcel(estudiantes);
+        setSuccessMessage('✓ Reporte exportado exitosamente a Excel');
+        setTimeout(() => setSuccessMessage(''), 3000);
+    };
+
     return (
         <>
             <div className="space-y-6">
@@ -153,6 +162,13 @@ const GestionEstudiantes = () => {
                         showBack={false}
                     />
                     <div className="flex space-x-2">
+                        <button
+                            onClick={exportarEstudiantes}
+                            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700"
+                        >
+                            <span className="mr-2">📥</span>
+                            Exportar
+                        </button>
                         <SecondaryButton onClick={() => setIsModalCargaOpen(true)}>
                             📤 Carga Masiva
                         </SecondaryButton>
@@ -183,10 +199,6 @@ const GestionEstudiantes = () => {
                 <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
                     <div className="flex justify-between items-center pb-4 border-b">
                         <h3 className="text-lg font-semibold text-gray-800">Estudiantes Registrados</h3>
-                        <button className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                            <span className="mr-2">📤</span>
-                            Exportar
-                        </button>
                     </div>
 
                     <div className="overflow-x-auto mt-4">
@@ -304,7 +316,6 @@ const GestionEstudiantes = () => {
                     )}
 
                     <div className="space-y-6">
-                        {/* Instrucciones */}
                         <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
                             <h4 className="text-sm font-semibold text-blue-800 mb-2">📋 Instrucciones para el archivo Excel:</h4>
                             <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
@@ -316,7 +327,6 @@ const GestionEstudiantes = () => {
                             </ul>
                         </div>
 
-                        {/* Botón Descargar Plantilla */}
                         <div className="flex justify-center">
                             <button
                                 onClick={descargarPlantilla}
@@ -327,7 +337,6 @@ const GestionEstudiantes = () => {
                             </button>
                         </div>
 
-                        {/* Input de archivo */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Seleccionar archivo Excel *
@@ -351,7 +360,6 @@ const GestionEstudiantes = () => {
                             )}
                         </div>
 
-                        {/* Botones */}
                         <div className="pt-4 border-t flex justify-end space-x-3">
                             <SecondaryButton onClick={() => setIsModalCargaOpen(false)} disabled={isUploading}>
                                 Cancelar
