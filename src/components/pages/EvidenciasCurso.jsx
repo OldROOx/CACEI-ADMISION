@@ -1,97 +1,89 @@
+// src/components/pages/EvidenciasCurso.jsx
 import React, { useState, useEffect } from 'react';
 import { FormHeader } from '../atoms/FormAtoms';
+import PrimaryButton from '../atoms/PrimaryButton';
 import SecondaryButton from '../atoms/SecondaryButton';
+import StatCard from '../atoms/StatCard';
 
-const API_BASE_URL = '/api/actividades';
+const API_BASE_URL = '/api';
 
 const EvidenciasCurso = () => {
-    const [actividades, setActividades] = useState([]);
     const [evidencias, setEvidencias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
-    const [filtroActividad, setFiltroActividad] = useState('');
+    // Filtros
     const [filtroTipo, setFiltroTipo] = useState('');
     const [busqueda, setBusqueda] = useState('');
     const [evidenciasFiltradas, setEvidenciasFiltradas] = useState([]);
 
-    const [isModalVistaOpen, setIsModalVistaOpen] = useState(false);
-    const [evidenciaSeleccionada, setEvidenciaSeleccionada] = useState(null);
+    // Estadísticas
+    const [stats, setStats] = useState({
+        totalEvidencias: 0,
+        fotos: 0,
+        documentos: 0,
+        videos: 0
+    });
 
     useEffect(() => {
-        fetchActividades();
+        fetchDatos();
     }, []);
 
     useEffect(() => {
         aplicarFiltros();
-    }, [evidencias, filtroActividad, filtroTipo, busqueda]);
+    }, [evidencias, filtroTipo, busqueda]);
 
-    const fetchActividades = async () => {
+    const fetchDatos = async () => {
         setLoading(true);
         setErrorMessage('');
+        setSuccessMessage('');
+
         try {
-            const response = await fetch(API_BASE_URL);
+            // Obtener archivos directamente de la carpeta uploads
+            const response = await fetch(`${API_BASE_URL}/evidencias/uploads`);
 
-            if (!response.ok) throw new Error('Error al cargar actividades');
+            if (!response.ok) {
+                throw new Error('Error al cargar archivos de uploads');
+            }
 
-            const actividadesData = await response.json();
-            setActividades(actividadesData);
+            const data = await response.json();
+            console.log('📊 Archivos cargados desde uploads:', data);
 
-            const evidenciasExtraidas = [];
-            actividadesData.forEach(actividad => {
-                if (actividad.EvidenciasURL) {
-                    const urls = actividad.EvidenciasURL.split(',');
-                    urls.forEach((url, index) => {
-                        evidenciasExtraidas.push({
-                            EvidenciaID: `${actividad.ActividadID}-${index}`,
-                            ActividadID: actividad.ActividadID,
-                            ActividadTipo: actividad.Tipo,
-                            ActividadFecha: actividad.Fecha,
-                            DocenteNombre: actividad.DocenteNombre,
-                            PreparatoriaNombre: actividad.PreparatoriaNombre,
-                            TipoEvidencia: getTipoFromURL(url.trim()),
-                            URL: url.trim(),
-                            Descripcion: `Evidencia ${index + 1} de actividad ${actividad.Tipo}`,
-                            FechaSubida: actividad.Fecha
-                        });
-                    });
-                }
+            setEvidencias(data.archivos || []);
+            setEvidenciasFiltradas(data.archivos || []);
+
+            // Calcular estadísticas
+            const archivos = data.archivos || [];
+            const fotos = archivos.filter(e => e.tipo === 'Foto').length;
+            const documentos = archivos.filter(e => e.tipo === 'Documento').length;
+            const videos = archivos.filter(e => e.tipo === 'Video').length;
+
+            setStats({
+                totalEvidencias: archivos.length,
+                fotos,
+                documentos,
+                videos
             });
 
-            setEvidencias(evidenciasExtraidas);
-            setEvidenciasFiltradas(evidenciasExtraidas);
-
         } catch (error) {
-            console.error('Error:', error);
-            setErrorMessage('Error al cargar las evidencias.');
+            console.error('❌ Error:', error);
+            setErrorMessage('Error al cargar las evidencias de la carpeta uploads.');
         } finally {
             setLoading(false);
         }
     };
 
-    const getTipoFromURL = (url) => {
-        const extension = url.split('.').pop().toLowerCase();
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) return 'Foto';
-        if (['mp4', 'avi', 'mov', 'wmv'].includes(extension)) return 'Video';
-        if (['pdf', 'doc', 'docx', 'xls', 'xlsx'].includes(extension)) return 'Documento';
-        return 'Enlace';
-    };
-
     const aplicarFiltros = () => {
         let resultados = [...evidencias];
 
-        if (filtroActividad) {
-            resultados = resultados.filter(ev => ev.ActividadID === parseInt(filtroActividad));
-        }
-
         if (filtroTipo) {
-            resultados = resultados.filter(ev => ev.TipoEvidencia === filtroTipo);
+            resultados = resultados.filter(ev => ev.tipo === filtroTipo);
         }
 
         if (busqueda) {
             resultados = resultados.filter(ev => {
-                const textoBusqueda =
-                    `${ev.Descripcion} ${ev.ActividadTipo} ${ev.DocenteNombre} ${ev.PreparatoriaNombre}`.toLowerCase();
+                const textoBusqueda = `${ev.nombreArchivo || ''} ${ev.extension || ''}`.toLowerCase();
                 return textoBusqueda.includes(busqueda.toLowerCase());
             });
         }
@@ -100,14 +92,43 @@ const EvidenciasCurso = () => {
     };
 
     const limpiarFiltros = () => {
-        setFiltroActividad('');
         setFiltroTipo('');
         setBusqueda('');
     };
 
-    const verDetalles = (evidencia) => {
-        setEvidenciaSeleccionada(evidencia);
-        setIsModalVistaOpen(true);
+    const descargarEvidencia = (url, nombreArchivo) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = nombreArchivo || url.split('/').pop();
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleEliminar = async (evidencia) => {
+        if (!window.confirm(`¿Está seguro de que desea eliminar "${evidencia.nombreArchivo}"?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/evidencias/uploads/${evidencia.nombreArchivo}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setErrorMessage(data.message || 'Error al eliminar archivo.');
+            } else {
+                setSuccessMessage('✓ Archivo eliminado exitosamente');
+                fetchDatos();
+                setTimeout(() => setSuccessMessage(''), 3000);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            setErrorMessage('Error de conexión con el servidor.');
+        }
     };
 
     const getTipoIcon = (tipo) => {
@@ -132,137 +153,168 @@ const EvidenciasCurso = () => {
 
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div className="flex justify-between items-start">
                 <FormHeader
-                    title="Evidencias del Curso"
-                    subtitle="Visualice todas las evidencias subidas en las actividades de promoción"
+                    title="Gestión de Evidencias"
+                    subtitle="Visualice, descargue y gestione todos los archivos de la carpeta uploads"
                     showBack={false}
                 />
-                <SecondaryButton onClick={fetchActividades}>
-                    🔄 Actualizar
-                </SecondaryButton>
+                <div className="flex space-x-2">
+                    <SecondaryButton onClick={fetchDatos}>
+                        🔄 Actualizar
+                    </SecondaryButton>
+                </div>
             </div>
 
-            {errorMessage && (
-                <div className="p-4 mb-4 rounded-lg text-sm bg-red-100 text-red-700">
-                    {errorMessage}
+            {/* Messages */}
+            {(successMessage || errorMessage) && (
+                <div className={`p-4 mb-4 rounded-lg text-sm ${successMessage ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {successMessage || errorMessage}
                 </div>
             )}
+
+            {/* Estadísticas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard value={stats.totalEvidencias} label="Total Archivos" colorClassName="text-white bg-indigo-500" />
+                <StatCard value={stats.fotos} label="Fotos" colorClassName="text-white bg-blue-500" />
+                <StatCard value={stats.documentos} label="Documentos" colorClassName="text-white bg-green-500" />
+                <StatCard value={stats.videos} label="Videos" colorClassName="text-white bg-purple-500" />
+            </div>
 
             {/* Filtros */}
             <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">🔍 Filtros de Búsqueda</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input
-                        className="px-3 py-2 border rounded-lg"
-                        placeholder="Buscar..."
+                        className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Buscar por nombre de archivo..."
                         value={busqueda}
                         onChange={(e) => setBusqueda(e.target.value)}
                     />
 
                     <select
-                        className="px-3 py-2 border rounded-lg"
-                        value={filtroActividad}
-                        onChange={(e) => setFiltroActividad(e.target.value)}
-                    >
-                        <option value="">Todas las actividades</option>
-                        {actividades.filter(act => act.EvidenciasURL).map(act => (
-                            <option key={act.ActividadID} value={act.ActividadID}>
-                                {act.Tipo} - {new Date(act.Fecha).toLocaleDateString('es-MX')}
-                            </option>
-                        ))}
-                    </select>
-
-                    <select
-                        className="px-3 py-2 border rounded-lg"
+                        className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                         value={filtroTipo}
                         onChange={(e) => setFiltroTipo(e.target.value)}
                     >
                         <option value="">Todos los tipos</option>
-                        <option value="Foto">Foto</option>
-                        <option value="Video">Video</option>
-                        <option value="Documento">Documento</option>
-                        <option value="Enlace">Enlace</option>
+                        <option value="Foto">📷 Foto</option>
+                        <option value="Video">🎥 Video</option>
+                        <option value="Documento">📄 Documento</option>
                     </select>
 
                     <button
                         onClick={limpiarFiltros}
-                        className="px-4 py-2 bg-gray-200 rounded-lg"
+                        className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                     >
                         ✖ Limpiar
                     </button>
                 </div>
+
+                <p className="text-sm text-gray-500 mt-4">
+                    Mostrando <b>{evidenciasFiltradas.length}</b> de <b>{evidencias.length}</b> archivos
+                </p>
             </div>
 
-            {/* Galería */}
+            {/* Tabla */}
             <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">📁 Galería de Evidencias</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">📁 Archivos en Uploads</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="overflow-x-auto">
                     {loading ? (
-                        <p>Cargando...</p>
+                        <div className="text-center py-12">
+                            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                            <p className="text-gray-500 mt-4">Cargando archivos...</p>
+                        </div>
                     ) : evidenciasFiltradas.length === 0 ? (
-                        <p>No hay resultados.</p>
+                        <div className="text-center py-12">
+                            <p className="text-gray-500 text-lg mb-2">📭 No hay archivos en la carpeta uploads</p>
+                            <p className="text-gray-400 text-sm">
+                                {evidencias.length === 0
+                                    ? 'Los archivos se suben cuando se registra una actividad de promoción con evidencias'
+                                    : 'No se encontraron archivos con los filtros aplicados'}
+                            </p>
+                        </div>
                     ) : (
-                        evidenciasFiltradas.map((ev) => (
-                            <div key={ev.EvidenciaID} className="border rounded-xl p-4 shadow">
-                                <span className={`px-3 py-1 text-xs rounded-full border ${getTipoBadge(ev.TipoEvidencia)}`}>
-                                    {getTipoIcon(ev.TipoEvidencia)} {ev.TipoEvidencia}
-                                </span>
-
-                                <h4 className="font-bold mt-3">{ev.ActividadTipo}</h4>
-                                <p className="text-sm text-gray-600">{ev.Descripcion}</p>
-
-                                <div className="flex space-x-2 mt-4">
-                                    <button
-                                        onClick={() => verDetalles(ev)}
-                                        className="px-3 py-2 bg-indigo-600 text-white rounded-lg flex-1"
-                                    >
-                                        👁️ Ver
-                                    </button>
-
-                                    <a
-                                        href={ev.URL}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="px-3 py-2 bg-blue-600 text-white rounded-lg"
-                                    >
-                                        📥
-                                    </a>
-                                </div>
-                            </div>
-                        ))
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre Archivo</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Extensión</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tamaño</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                            {evidenciasFiltradas.map((ev) => (
+                                <tr key={ev.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        #{ev.id}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`inline-flex items-center px-3 py-1 text-xs rounded-full border font-medium ${getTipoBadge(ev.tipo)}`}>
+                                                <span className="mr-1">{getTipoIcon(ev.tipo)}</span>
+                                                {ev.tipo}
+                                            </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title={ev.nombreArchivo}>
+                                        {ev.nombreArchivo}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-500 uppercase">
+                                        .{ev.extension}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                                        {ev.tamañoLegible}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                                        {new Date(ev.fechaModificacion).toLocaleDateString('es-MX', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={() => descargarEvidencia(ev.url, ev.nombreArchivo)}
+                                                className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+                                                title="Descargar archivo"
+                                            >
+                                                <span className="mr-1">📥</span>
+                                                Descargar
+                                            </button>
+                                            <button
+                                                onClick={() => window.open(ev.url, '_blank')}
+                                                className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-medium"
+                                                title="Ver archivo en nueva pestaña"
+                                            >
+                                                <span className="mr-1">👁️</span>
+                                                Ver
+                                            </button>
+                                            <button
+                                                onClick={() => handleEliminar(ev)}
+                                                className="inline-flex items-center px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium"
+                                                title="Eliminar archivo"
+                                            >
+                                                <span className="mr-1">🗑️</span>
+                                                Eliminar
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
                     )}
                 </div>
             </div>
-
-            {/* Modal */}
-            {isModalVistaOpen && evidenciaSeleccionada && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white p-8 rounded-xl w-full max-w-3xl">
-                        <h2 className="text-2xl font-bold mb-4">📋 Detalles</h2>
-
-                        <p><strong>Tipo:</strong> {evidenciaSeleccionada.TipoEvidencia}</p>
-                        <p><strong>Actividad:</strong> {evidenciaSeleccionada.ActividadTipo}</p>
-
-                        <a
-                            href={evidenciaSeleccionada.URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg"
-                        >
-                            📥 Descargar / Ver Archivo
-                        </a>
-
-                        <div className="mt-6 text-right">
-                            <SecondaryButton onClick={() => setIsModalVistaOpen(false)}>
-                                Cerrar
-                            </SecondaryButton>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
