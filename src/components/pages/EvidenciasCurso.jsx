@@ -6,6 +6,8 @@ import SecondaryButton from '../atoms/SecondaryButton';
 import StatCard from '../atoms/StatCard';
 
 const API_BASE_URL = '/api';
+// ✅ NUEVO: URL base para archivos estáticos del backend
+const BACKEND_URL = 'http://localhost:3000';
 
 const EvidenciasCurso = () => {
     const [evidencias, setEvidencias] = useState([]);
@@ -40,7 +42,6 @@ const EvidenciasCurso = () => {
         setSuccessMessage('');
 
         try {
-            // Obtener archivos directamente de la carpeta uploads
             const response = await fetch(`${API_BASE_URL}/evidencias/uploads`);
 
             if (!response.ok) {
@@ -53,7 +54,6 @@ const EvidenciasCurso = () => {
             setEvidencias(data.archivos || []);
             setEvidenciasFiltradas(data.archivos || []);
 
-            // Calcular estadísticas
             const archivos = data.archivos || [];
             const fotos = archivos.filter(e => e.tipo === 'Foto').length;
             const documentos = archivos.filter(e => e.tipo === 'Documento').length;
@@ -96,14 +96,31 @@ const EvidenciasCurso = () => {
         setBusqueda('');
     };
 
-    const descargarEvidencia = (url, nombreArchivo) => {
+    // ✅ CORRECCIÓN: Usar BACKEND_URL para construir la URL completa
+    const descargarEvidencia = (nombreArchivo) => {
+        const fileUrl = `${BACKEND_URL}/uploads/${nombreArchivo}`;
+
+        console.log('📥 Descargando archivo desde:', fileUrl);
+
         const link = document.createElement('a');
-        link.href = url;
-        link.download = nombreArchivo || url.split('/').pop();
+        link.href = fileUrl;
+        link.download = nombreArchivo;
         link.target = '_blank';
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        console.log('✅ Descarga iniciada');
+    };
+
+    // ✅ CORRECCIÓN: Usar BACKEND_URL para abrir el archivo
+    const verEvidencia = (nombreArchivo) => {
+        const fileUrl = `${BACKEND_URL}/uploads/${nombreArchivo}`;
+
+        console.log('👁️ Abriendo archivo:', fileUrl);
+
+        window.open(fileUrl, '_blank', 'noopener,noreferrer');
     };
 
     const handleEliminar = async (evidencia) => {
@@ -257,10 +274,10 @@ const EvidenciasCurso = () => {
                                         #{ev.id}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex items-center px-3 py-1 text-xs rounded-full border font-medium ${getTipoBadge(ev.tipo)}`}>
-                                                <span className="mr-1">{getTipoIcon(ev.tipo)}</span>
-                                                {ev.tipo}
-                                            </span>
+                                        <span className={`inline-flex items-center px-3 py-1 text-xs rounded-full border font-medium ${getTipoBadge(ev.tipo)}`}>
+                                            <span className="mr-1">{getTipoIcon(ev.tipo)}</span>
+                                            {ev.tipo}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title={ev.nombreArchivo}>
                                         {ev.nombreArchivo}
@@ -283,7 +300,7 @@ const EvidenciasCurso = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                                         <div className="flex items-center space-x-2">
                                             <button
-                                                onClick={() => descargarEvidencia(ev.url, ev.nombreArchivo)}
+                                                onClick={() => descargarEvidencia(ev.nombreArchivo)}
                                                 className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
                                                 title="Descargar archivo"
                                             >
@@ -291,7 +308,7 @@ const EvidenciasCurso = () => {
                                                 Descargar
                                             </button>
                                             <button
-                                                onClick={() => window.open(ev.url, '_blank')}
+                                                onClick={() => verEvidencia(ev.nombreArchivo)}
                                                 className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-medium"
                                                 title="Ver archivo en nueva pestaña"
                                             >
