@@ -1,7 +1,65 @@
+// src/utils/exportUtils.js
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+
+// ==========================================================
+// HELPER: CALCULAR PERÍODO ESCOLAR
+// ==========================================================
+const obtenerPeriodoEscolar = () => {
+    const hoy = new Date();
+    const mes = hoy.getMonth() + 1; // getMonth() devuelve 0-11
+    const año = hoy.getFullYear();
+
+    if (mes >= 9 && mes <= 12) {
+        return `Septiembre - Diciembre ${año}`;
+    } else if (mes >= 1 && mes <= 4) {
+        return `Enero - Abril ${año}`;
+    } else {
+        // Mayo - Agosto (período vacacional/extraordinario)
+        return `Mayo - Agosto ${año}`;
+    }
+};
+
+// ==========================================================
+// HELPER: AGREGAR HEADER CON LOGO Y DATOS
+// ==========================================================
+const agregarHeaderConLogo = (doc, titulo) => {
+    const periodoEscolar = obtenerPeriodoEscolar();
+
+    // Logo (asume que tienes el logo en public o como base64)
+    // Opción 1: Si tienes el logo como archivo en public
+    // doc.addImage('/logo-escuela.png', 'PNG', 14, 10, 30, 30);
+
+    // Opción 2: Logo como base64 (recomendado para portabilidad)
+    // Puedes convertir tu logo a base64 en https://www.base64-image.de/
+    // y pegarlo aquí:
+    const logoBase64 = 'public/logo1.png';
+
+    try {
+        doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
+    } catch (error) {
+        console.warn('No se pudo cargar el logo:', error);
+    }
+
+    // Información de la institución y carrera
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(titulo, 45, 20);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Ingeniería en Software', 45, 27);
+    doc.text(`Período Escolar: ${periodoEscolar}`, 45, 33);
+
+    // Fecha del reporte (derecha)
+    doc.setFontSize(9);
+    doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-MX')}`,
+        doc.internal.pageSize.width - 14, 20, { align: 'right' });
+
+    return 40; // Retorna la posición Y donde termina el header
+};
 
 // ==========================================================
 // EXPORTAR A PDF
@@ -11,15 +69,8 @@ export const exportarActividadesPDF = (actividades) => {
     try {
         const doc = new jsPDF();
 
-        // Título
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte de Actividades de Promoción', 14, 20);
-
-        // Fecha del reporte
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
+        // Header con logo
+        const startY = agregarHeaderConLogo(doc, 'Reporte de Actividades de Promoción');
 
         // Preparar datos para la tabla
         const tableData = actividades.map((act, index) => [
@@ -34,7 +85,7 @@ export const exportarActividadesPDF = (actividades) => {
 
         // Crear tabla
         autoTable(doc, {
-            startY: 35,
+            startY: startY,
             head: [['#', 'Fecha', 'Tipo', 'Docente', 'Preparatoria', 'Estudiantes', 'Evidencias']],
             body: tableData,
             theme: 'grid',
@@ -49,7 +100,7 @@ export const exportarActividadesPDF = (actividades) => {
             doc.setPage(i);
             doc.setFontSize(8);
             doc.text(
-                `Página ${i} de ${pageCount}`,
+                `Página ${i} de ${pageCount} - Universidad Politécnica de Chiapas`,
                 doc.internal.pageSize.width / 2,
                 doc.internal.pageSize.height - 10,
                 { align: 'center' }
@@ -69,14 +120,10 @@ export const exportarEstudiantesPDF = (estudiantes) => {
     try {
         const doc = new jsPDF();
 
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte de Estudiantes', 14, 20);
+        const startY = agregarHeaderConLogo(doc, 'Reporte de Estudiantes');
 
         doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
-        doc.text(`Total de estudiantes: ${estudiantes.length}`, 14, 34);
+        doc.text(`Total de estudiantes: ${estudiantes.length}`, 14, startY - 5);
 
         const tableData = estudiantes.map((est, index) => [
             index + 1,
@@ -90,7 +137,7 @@ export const exportarEstudiantesPDF = (estudiantes) => {
         ]);
 
         autoTable(doc, {
-            startY: 40,
+            startY: startY + 2,
             head: [['#', 'Matrícula', 'Nombre', 'Correo', 'Preparatoria', 'Municipio', 'Carrera', 'Estado']],
             body: tableData,
             theme: 'grid',
@@ -104,7 +151,7 @@ export const exportarEstudiantesPDF = (estudiantes) => {
             doc.setPage(i);
             doc.setFontSize(8);
             doc.text(
-                `Página ${i} de ${pageCount}`,
+                `Página ${i} de ${pageCount} - Universidad Politécnica de Chiapas`,
                 doc.internal.pageSize.width / 2,
                 doc.internal.pageSize.height - 10,
                 { align: 'center' }
@@ -123,13 +170,7 @@ export const exportarAsistenciaPDF = (clases, asistencias) => {
     try {
         const doc = new jsPDF();
 
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte de Asistencias', 14, 20);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
+        const startY = agregarHeaderConLogo(doc, 'Reporte de Asistencias');
 
         const tableData = clases.map((clase, index) => {
             const asistenciasClase = asistencias.filter(a => a.ClaseID === clase.ClaseID);
@@ -148,7 +189,7 @@ export const exportarAsistenciaPDF = (clases, asistencias) => {
         });
 
         autoTable(doc, {
-            startY: 35,
+            startY: startY,
             head: [['#', 'Materia', 'Fecha', 'Docente', 'Asistencia', 'Porcentaje']],
             body: tableData,
             theme: 'grid',
@@ -162,7 +203,7 @@ export const exportarAsistenciaPDF = (clases, asistencias) => {
             doc.setPage(i);
             doc.setFontSize(8);
             doc.text(
-                `Página ${i} de ${pageCount}`,
+                `Página ${i} de ${pageCount} - Universidad Politécnica de Chiapas`,
                 doc.internal.pageSize.width / 2,
                 doc.internal.pageSize.height - 10,
                 { align: 'center' }
@@ -181,14 +222,10 @@ export const exportarClasesPDF = (clases) => {
     try {
         const doc = new jsPDF();
 
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte de Clases de Nivelación', 14, 20);
+        const startY = agregarHeaderConLogo(doc, 'Reporte de Clases de Nivelación');
 
         doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-MX')}`, 14, 28);
-        doc.text(`Total de clases: ${clases.length}`, 14, 34);
+        doc.text(`Total de clases: ${clases.length}`, 14, startY - 5);
 
         const tableData = clases.map((clase, index) => [
             index + 1,
@@ -201,7 +238,7 @@ export const exportarClasesPDF = (clases) => {
         ]);
 
         autoTable(doc, {
-            startY: 40,
+            startY: startY + 2,
             head: [['#', 'Materia', 'Fecha', 'Horario', 'Docente', 'Tema', 'Salón']],
             body: tableData,
             theme: 'grid',
@@ -215,7 +252,7 @@ export const exportarClasesPDF = (clases) => {
             doc.setPage(i);
             doc.setFontSize(8);
             doc.text(
-                `Página ${i} de ${pageCount}`,
+                `Página ${i} de ${pageCount} - Universidad Politécnica de Chiapas`,
                 doc.internal.pageSize.width / 2,
                 doc.internal.pageSize.height - 10,
                 { align: 'center' }
@@ -234,27 +271,14 @@ export const exportarReporteGeneralPDF = (statsData, activityChartData) => {
     try {
         const doc = new jsPDF();
 
-        // Título
-        doc.setFontSize(20);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte General del Sistema', 14, 20);
-
-        // Fecha
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-MX', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        })}`, 14, 28);
+        const startY = agregarHeaderConLogo(doc, 'Reporte General del Sistema');
 
         // Estadísticas generales
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text('Estadísticas Generales', 14, 40);
+        doc.text('Estadísticas Generales', 14, startY + 5);
 
-        let yPosition = 50;
+        let yPosition = startY + 15;
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
 
@@ -297,7 +321,7 @@ export const exportarReporteGeneralPDF = (statsData, activityChartData) => {
             doc.setPage(i);
             doc.setFontSize(8);
             doc.text(
-                `Página ${i} de ${pageCount} - Sistema CACEI`,
+                `Página ${i} de ${pageCount} - Universidad Politécnica de Chiapas`,
                 doc.internal.pageSize.width / 2,
                 doc.internal.pageSize.height - 10,
                 { align: 'center' }
@@ -313,7 +337,7 @@ export const exportarReporteGeneralPDF = (statsData, activityChartData) => {
 };
 
 // ==========================================================
-// EXPORTAR A EXCEL
+// EXPORTAR A EXCEL (sin cambios en esta sección)
 // ==========================================================
 
 export const exportarActividadesExcel = (actividades) => {
@@ -440,7 +464,7 @@ export const exportarAsistenciaExcel = (clases, asistencias) => {
 
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, `Reporte_Asistencias_${new Date().toISOString().split('T')[0]}.xlsx`);
+        saveAs(blob, `Reporte_Asistencias_${new Date().toISOString().split('T')[0]}.pdf`);
         console.log('Excel de asistencias generado exitosamente');
     } catch (error) {
         console.error('Error al generar Excel de asistencias:', error);
